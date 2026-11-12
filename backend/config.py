@@ -13,10 +13,12 @@ class Settings:
     GEMINI_API_KEY: str = os.getenv("GEMINI_API_KEY", "")
     OPENAI_API_KEY: str = os.getenv("OPENAI_API_KEY", "")
     GROQ_API_KEY: str = os.getenv("GROQ_API_KEY", "")
+    ANTHROPIC_API_KEY: str = os.getenv("ANTHROPIC_API_KEY", "")
 
-    # AI Provider Priority Order
+    # AI Provider Priority Order (default: free providers only)
+    # Add anthropic/openai to the list if you have paid API keys
     AI_PROVIDER_PRIORITY: list[str] = os.getenv(
-        "AI_PROVIDER_PRIORITY", "gemini,openai,groq"
+        "AI_PROVIDER_PRIORITY", "gemini,groq"
     ).split(",")
 
     # App Config
