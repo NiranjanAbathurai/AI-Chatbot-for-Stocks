@@ -1,0 +1,13 @@
+fastapi
+uvicorn[standard]
+python-dotenv
+yfinance
+google-genai
+openai
+groq
+pydantic
+httpx
+aiohttp
+apscheduler
+pandas
+numpy

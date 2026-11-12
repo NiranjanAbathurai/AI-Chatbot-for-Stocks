@@ -1,0 +1,88 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Stock Debate Chat</title>
+    <link rel="stylesheet" href="/style.css">
+    <!-- Markdown rendering -->
+    <script src="https://cdn.jsdelivr.net/npm/marked/marked.min.js"></script>
+</head>
+<body>
+    <div class="app-container">
+        <!-- Header -->
+        <header class="app-header">
+            <div class="header-content">
+                <h1>📊 Stock Debate Chat</h1>
+                <p class="subtitle">AI-powered Bull vs Bear analysis for NSE stocks</p>
+            </div>
+            <div class="header-status" id="providerStatus">
+                <span class="status-dot"></span>
+                <span class="status-text">Connecting...</span>
+            </div>
+        </header>
+
+        <!-- Discover Section (Phase 2) -->
+        <div class="discover-section" id="discoverSection" style="display: none;">
+            <div class="discover-cards">
+                <div class="discover-card buy-card" id="topBuysCard">
+                    <h3>🟢 Top Buys</h3>
+                    <div class="discover-list" id="topBuysList">
+                        <p class="loading-text">Scanning...</p>
+                    </div>
+                </div>
+                <div class="discover-card short-card" id="topShortsCard">
+                    <h3>🔴 Top Shorts</h3>
+                    <div class="discover-list" id="topShortsList">
+                        <p class="loading-text">Scanning...</p>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <!-- Chat Messages Area -->
+        <div class="chat-container" id="chatContainer">
+            <div class="chat-messages" id="chatMessages">
+                <!-- Welcome message -->
+                <div class="message system-message welcome">
+                    <div class="message-content">
+                        <h2>Welcome to Stock Debate Chat! 👋</h2>
+                        <p>Enter any NSE stock name below and watch three AI agents debate whether to buy it:</p>
+                        <ul>
+                            <li>🐂 <strong>The Bull</strong> — Makes the case FOR buying</li>
+                            <li>🐻 <strong>The Bear</strong> — Makes the case AGAINST buying</li>
+                            <li>⚖️ <strong>The Judge</strong> — Delivers the final verdict</li>
+                        </ul>
+                        <p class="hint">Try: <span class="stock-hint" onclick="analyzeStock('Reliance')">Reliance</span>, 
+                        <span class="stock-hint" onclick="analyzeStock('TCS')">TCS</span>, 
+                        <span class="stock-hint" onclick="analyzeStock('HDFC Bank')">HDFC Bank</span>, 
+                        <span class="stock-hint" onclick="analyzeStock('Infosys')">Infosys</span></p>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <!-- Input Area -->
+        <div class="input-area">
+            <div class="input-container">
+                <input 
+                    type="text" 
+                    id="stockInput" 
+                    placeholder="Enter stock name (e.g., Axis Bank, TCS, Reliance)..." 
+                    autocomplete="off"
+                    maxlength="100"
+                >
+                <button id="analyzeBtn" onclick="handleAnalyze()">
+                    <span class="btn-text">Analyze</span>
+                    <span class="btn-icon">🔍</span>
+                </button>
+            </div>
+            <p class="disclaimer-footer">
+                ⚠️ AI-generated analysis for educational purposes only. Not financial advice.
+            </p>
+        </div>
+    </div>
+
+    <script src="/app.js"></script>
+</body>
+</html>

@@ -1,0 +1,24 @@
+{
+  "name": "stock-debate-chat",
+  "version": "1.0.0",
+  "description": "AI-powered stock analysis with Bull, Bear, and Judge agents — deployed on Netlify",
+  "private": true,
+  "type": "module",
+  "scripts": {
+    "dev": "netlify dev",
+    "build": "echo 'No build step needed'"
+  },
+  "dependencies": {
+    "@google/genai": "^1.0.0",
+    "@netlify/blobs": "^8.1.0",
+    "groq-sdk": "^0.8.0",
+    "openai": "^4.70.0",
+    "yahoo-finance2": "^2.13.0"
+  },
+  "devDependencies": {
+    "netlify-cli": "^17.0.0"
+  },
+  "engines": {
+    "node": ">=18.0.0"
+  }
+}
