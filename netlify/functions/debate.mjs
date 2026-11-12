@@ -145,15 +145,34 @@ export default async (req, context) => {
       );
     }
 
-    // Step 2: Fetch stock data
+    // Step 2: Fetch stock data (with graceful degradation)
     let stockData;
     try {
       stockData = await fetchStockData(ticker);
     } catch (err) {
-      return new Response(
-        JSON.stringify({ detail: `Could not fetch data for ${ticker}: ${err.message}` }),
-        { status: 502, headers: CORS_HEADERS }
-      );
+      console.warn(`Stock data fetch failed for ${ticker}: ${err.message}`);
+      // Return a minimal stock data object so the debate can still proceed
+      // with whatever data is available (AI can still analyze based on general knowledge)
+      const isTooManyRequests = (err.message || "").toLowerCase().includes("too many requests");
+      if (isTooManyRequests) {
+        // Use empty data but let the debate continue
+        stockData = {
+          stock_name: ticker.replace(".NS", "").replace(".BO", ""),
+          current_price: null, market_cap: null, pe_ratio: null,
+          pb_ratio: null, eps: null, dividend_yield: null,
+          "52_week_high": null, "52_week_low": null,
+          debt_to_equity: null, roe: null, revenue_growth: null,
+          profit_growth: null, promoter_holding: null,
+          "1m_return": null, "3m_return": null,
+          "6m_return": null, "1y_return": null,
+          volume: null, avg_volume: null, sector: null, industry: null,
+        };
+      } else {
+        return new Response(
+          JSON.stringify({ detail: `Could not fetch data for ${ticker}: ${err.message}` }),
+          { status: 502, headers: CORS_HEADERS }
+        );
+      }
     }
 
     const fullName = stockData.stock_name || stockName;

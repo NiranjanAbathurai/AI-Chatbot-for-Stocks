@@ -9,7 +9,9 @@ You can pin a specific model via the OPENAI_MODEL environment variable.
 
 import logging
 import os
+import ssl
 
+import httpx
 from openai import AsyncOpenAI
 
 from .base import AIProvider
@@ -52,7 +54,10 @@ class OpenAIProvider(AIProvider):
 
     def __init__(self):
         if self.is_available():
-            self._client = AsyncOpenAI(api_key=settings.OPENAI_API_KEY)
+            self._client = AsyncOpenAI(
+                api_key=settings.OPENAI_API_KEY,
+                http_client=httpx.AsyncClient(verify=False),
+            )
         else:
             self._client = None
 

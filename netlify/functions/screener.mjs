@@ -11,6 +11,49 @@
 import yahooFinance from "yahoo-finance2";
 import { NIFTY_50 } from "./lib/nifty-stocks.mjs";
 
+// Suppress yahoo-finance2 validation errors (e.g., non-JSON responses)
+yahooFinance.setGlobalConfig({
+  validation: { logErrors: false },
+});
+
+/**
+ * Sleep for a given number of milliseconds.
+ */
+function sleep(ms) {
+  return new Promise((resolve) => setTimeout(resolve, ms));
+}
+
+/**
+ * Retry a function with exponential backoff.
+ */
+async function withRetry(fn, maxRetries = 3, baseDelay = 1000) {
+  let lastError;
+  for (let attempt = 0; attempt <= maxRetries; attempt++) {
+    try {
+      return await fn();
+    } catch (err) {
+      lastError = err;
+      const msg = (err.message || "").toLowerCase();
+      const isRetryable =
+        msg.includes("too many requests") ||
+        msg.includes("429") ||
+        msg.includes("rate limit") ||
+        msg.includes("not valid json");
+
+      if (isRetryable && attempt < maxRetries) {
+        const delay = baseDelay * Math.pow(2, attempt) + Math.random() * 500;
+        console.log(
+          `Rate limited, retrying in ${Math.round(delay)}ms (attempt ${attempt + 1}/${maxRetries})...`
+        );
+        await sleep(delay);
+        continue;
+      }
+      throw err;
+    }
+  }
+  throw lastError;
+}
+
 const CORS_HEADERS = {
   "Access-Control-Allow-Origin": "*",
   "Access-Control-Allow-Methods": "GET, OPTIONS",
@@ -214,10 +257,12 @@ function scoreShortSignal(info, rsi) {
 
 async function analyzeStock(stock) {
   try {
-    // Fetch quote summary
-    const quote = await yahooFinance.quoteSummary(stock.ticker, {
-      modules: ["price", "summaryDetail", "defaultKeyStatistics", "financialData"],
-    });
+    // Fetch quote summary with retry
+    const quote = await withRetry(() =>
+      yahooFinance.quoteSummary(stock.ticker, {
+        modules: ["price", "summaryDetail", "defaultKeyStatistics", "financialData"],
+      })
+    );
 
     const price = quote.price || {};
     const summary = quote.summaryDetail || {};
@@ -248,11 +293,13 @@ async function analyzeStock(stock) {
       const startDate = new Date();
       startDate.setDate(startDate.getDate() - 35); // ~5 weeks for RSI(14)
 
-      const histResult = await yahooFinance.chart(stock.ticker, {
-        period1: startDate.toISOString().split("T")[0],
-        period2: endDate.toISOString().split("T")[0],
-        interval: "1d",
-      });
+      const histResult = await withRetry(() =>
+        yahooFinance.chart(stock.ticker, {
+          period1: startDate.toISOString().split("T")[0],
+          period2: endDate.toISOString().split("T")[0],
+          interval: "1d",
+        })
+      );
 
       const quotes = histResult?.quotes || [];
       if (quotes.length > 14) {
@@ -278,13 +325,18 @@ async function scanStocks() {
 
   console.log(`Starting stock scan for ${NIFTY_50.length} stocks...`);
 
-  // Process in batches of 5 to avoid rate limiting
-  const batchSize = 5;
+  // Process in batches of 3 to avoid rate limiting (reduced from 5)
+  const batchSize = 3;
   for (let i = 0; i < NIFTY_50.length; i += batchSize) {
     const batch = NIFTY_50.slice(i, i + batchSize);
     const results = await Promise.allSettled(
       batch.map((stock) => analyzeStock(stock))
     );
+
+    // Add delay between batches to avoid rate limiting
+    if (i + batchSize < NIFTY_50.length) {
+      await sleep(1500);
+    }
 
     for (let j = 0; j < results.length; j++) {
       const result = results[j];

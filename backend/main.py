@@ -1,5 +1,7 @@
 """FastAPI application entry point with CORS, static files, and background scheduler."""
 
+import ssl_fix 
+
 import logging
 import sys
 from pathlib import Path

@@ -10,6 +10,7 @@ You can pin a specific model via the GROQ_MODEL environment variable.
 import logging
 import os
 
+import httpx
 from groq import AsyncGroq
 
 from .base import AIProvider
@@ -56,7 +57,10 @@ class GroqProvider(AIProvider):
 
     def __init__(self):
         if self.is_available():
-            self._client = AsyncGroq(api_key=settings.GROQ_API_KEY)
+            self._client = AsyncGroq(
+                api_key=settings.GROQ_API_KEY,
+                http_client=httpx.AsyncClient(verify=False),
+            )
         else:
             self._client = None
 
