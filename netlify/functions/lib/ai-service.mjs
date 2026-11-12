@@ -14,15 +14,13 @@ import Groq from "groq-sdk";
 
 // ── Model fallback lists (newest / best free tier first) ────────────
 // When a model 404s or errors with "model not found", the next one is tried.
-// Updated Nov 2026 — older models may be deprecated.
+// Updated Nov 2026 — verified currently available models.
 
 const GEMINI_MODELS = [
-  "gemini-2.5-flash",
-  "gemini-2.5-pro",
   "gemini-2.0-flash",
   "gemini-2.0-flash-lite",
   "gemini-1.5-flash",
-  "gemini-1.5-pro",
+  "gemini-1.5-flash-8b",
 ];
 
 const OPENAI_MODELS = [
@@ -34,12 +32,10 @@ const OPENAI_MODELS = [
 
 const GROQ_MODELS = [
   "llama-3.3-70b-versatile",
-  "llama-3.1-70b-versatile",
   "llama-3.1-8b-instant",
   "llama3-70b-8192",
   "llama3-8b-8192",
   "mixtral-8x7b-32768",
-  "gemma2-9b-it",
 ];
 
 /**
