@@ -35,21 +35,32 @@ async def create_debate(request: DebateRequest):
             detail=f"Could not find stock '{stock_name}'.{suggestion_text}",
         )
 
-    # Step 2: Fetch stock data
+    # Step 2: Fetch stock data (with graceful degradation)
+    stock_data_error = None
     try:
         stock_data = await fetch_stock_data(ticker)
     except RuntimeError as e:
-        raise HTTPException(
-            status_code=502,
-            detail=f"Could not fetch data for {ticker}: {str(e)}",
-        )
+        stock_data_error = str(e)
+        logger.warning(f"Stock data fetch failed for {ticker}: {e}")
+        # Allow the debate to proceed with general knowledge
+        stock_data = {
+            "stock_name": ticker.replace(".NS", "").replace(".BO", ""),
+            "current_price": None, "market_cap": None, "pe_ratio": None,
+            "pb_ratio": None, "eps": None, "dividend_yield": None,
+            "52_week_high": None, "52_week_low": None,
+            "debt_to_equity": None, "roe": None, "revenue_growth": None,
+            "profit_growth": None, "promoter_holding": None,
+            "1m_return": None, "3m_return": None,
+            "6m_return": None, "1y_return": None,
+            "volume": None, "avg_volume": None, "sector": None, "industry": None,
+        }
 
     # Extract the full stock name from data
     full_name = stock_data.pop("stock_name", stock_name)
 
     # Step 3: Run the debate
     try:
-        debate_result = await run_debate(full_name, ticker, stock_data)
+        debate_result = await run_debate(full_name, ticker, stock_data, stock_data_error)
     except RuntimeError as e:
         raise HTTPException(
             status_code=503,

@@ -14,7 +14,9 @@ from prompts.judge import JUDGE_SYSTEM_PROMPT
 logger = logging.getLogger(__name__)
 
 
-def _format_stock_data_prompt(stock_name: str, ticker: str, stock_data: dict) -> str:
+def _format_stock_data_prompt(
+    stock_name: str, ticker: str, stock_data: dict, stock_data_error: Optional[str] = None
+) -> str:
     """Format stock data into a readable prompt for the AI agents."""
     lines = [
         f"# Stock Analysis Request: {stock_name} ({ticker})",
@@ -47,16 +49,27 @@ def _format_stock_data_prompt(stock_name: str, ticker: str, stock_data: dict) ->
         "industry": "Industry",
     }
 
+    has_data = False
     for key, label in field_labels.items():
         value = stock_data.get(key)
         if value is not None:
+            has_data = True
             if isinstance(value, float):
                 lines.append(f"- **{label}**: {value:.2f}")
             else:
                 lines.append(f"- **{label}**: {value}")
 
-    lines.append("")
-    lines.append("Analyze this stock based on the data above. Use specific numbers in your analysis.")
+    if not has_data:
+        lines.append("⚠️ **Live market data is temporarily unavailable.**")
+        if stock_data_error:
+            lines.append(f"(Reason: {stock_data_error})")
+        lines.append("")
+        lines.append("Please provide your analysis based on your general knowledge of this stock,")
+        lines.append("its fundamentals, recent news, sector trends, and historical performance.")
+        lines.append("Clearly state that live data was unavailable and your analysis is based on general knowledge.")
+    else:
+        lines.append("")
+        lines.append("Analyze this stock based on the data above. Use specific numbers in your analysis.")
 
     return "\n".join(lines)
 
@@ -109,7 +122,9 @@ def _parse_verdict(judge_response: str) -> dict:
     }
 
 
-async def run_debate(stock_name: str, ticker: str, stock_data: dict) -> dict:
+async def run_debate(
+    stock_name: str, ticker: str, stock_data: dict, stock_data_error: Optional[str] = None
+) -> dict:
     """
     Run the full debate: Bull and Bear in parallel, then Judge.
 
@@ -117,12 +132,13 @@ async def run_debate(stock_name: str, ticker: str, stock_data: dict) -> dict:
         stock_name: Human-readable stock name.
         ticker: NSE ticker symbol.
         stock_data: Dict of stock data from yfinance.
+        stock_data_error: Optional error message if stock data fetch failed.
 
     Returns:
         Dict with bullish, bearish, and verdict results.
     """
     # Format the stock data prompt
-    data_prompt = _format_stock_data_prompt(stock_name, ticker, stock_data)
+    data_prompt = _format_stock_data_prompt(stock_name, ticker, stock_data, stock_data_error)
 
     # ── Step 1: Run Bull and Bear in parallel ───────────────────
     logger.info(f"Starting debate for {stock_name} ({ticker})")

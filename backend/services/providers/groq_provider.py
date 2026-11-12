@@ -20,8 +20,8 @@ logger = logging.getLogger(__name__)
 
 # Ordered from newest/best free-tier model to oldest.
 # When Groq removes a model, the next one is tried automatically.
+# Updated Nov 2026 — removed potentially deprecated models.
 GROQ_FALLBACK_MODELS = [
-    "meta-llama/llama-4-scout-17b-16e-instruct",
     "llama-3.3-70b-versatile",
     "llama-3.1-70b-versatile",
     "llama-3.1-8b-instant",

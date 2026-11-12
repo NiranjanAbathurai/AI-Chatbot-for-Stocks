@@ -1,13 +1,17 @@
 /**
- * Stock data service using yahoo-finance2 with retry logic for rate limiting.
+ * Stock data service using yahoo-finance2 v4 with retry logic for rate limiting.
+ * Updated from v2 (EOL 2025) to v4 for continued Yahoo Finance API support.
+ *
+ * v4 breaking changes from v2:
+ *   - Must instantiate: `new YahooFinance()` instead of using default export directly
+ *   - `setGlobalConfig` removed; use constructor options instead
+ *   - `price.marketCap` removed; use `summaryDetail.nonDilutedMarketCap`
  */
 
-import yahooFinance from "yahoo-finance2";
+import YahooFinance from "yahoo-finance2";
 
-// Suppress yahoo-finance2 validation errors (e.g., non-JSON responses)
-yahooFinance.setGlobalConfig({
-  validation: { logErrors: false },
-});
+// Create a singleton instance with suppressed notices
+const yahooFinance = new YahooFinance({ suppressNotices: ["yahooSurvey"] });
 
 /**
  * Sleep for a given number of milliseconds.
@@ -22,7 +26,7 @@ function sleep(ms) {
  * @param {number} maxRetries - Maximum number of retries
  * @param {number} baseDelay - Base delay in ms (doubles each retry)
  */
-async function withRetry(fn, maxRetries = 3, baseDelay = 1000) {
+async function withRetry(fn, maxRetries = 4, baseDelay = 1500) {
   let lastError;
   for (let attempt = 0; attempt <= maxRetries; attempt++) {
     try {
@@ -30,15 +34,21 @@ async function withRetry(fn, maxRetries = 3, baseDelay = 1000) {
     } catch (err) {
       lastError = err;
       const msg = (err.message || "").toLowerCase();
-      const isTooManyRequests =
+      const isRetryable =
         msg.includes("too many requests") ||
         msg.includes("429") ||
-        msg.includes("rate limit");
+        msg.includes("rate limit") ||
+        msg.includes("not valid json") ||
+        msg.includes("fetch failed") ||
+        msg.includes("network") ||
+        msg.includes("econnreset") ||
+        msg.includes("timeout") ||
+        msg.includes("socket hang up");
 
-      if (isTooManyRequests && attempt < maxRetries) {
+      if (isRetryable && attempt < maxRetries) {
         const delay = baseDelay * Math.pow(2, attempt) + Math.random() * 500;
         console.log(
-          `Rate limited, retrying in ${Math.round(delay)}ms (attempt ${attempt + 1}/${maxRetries})...`
+          `Retryable error, retrying in ${Math.round(delay)}ms (attempt ${attempt + 1}/${maxRetries}): ${msg.slice(0, 80)}`
         );
         await sleep(delay);
         continue;
@@ -79,7 +89,20 @@ function calculateReturn(history, days) {
 }
 
 /**
+ * Validate that stock data has at least some meaningful values.
+ * Returns true if the data is usable.
+ */
+function validateStockData(data) {
+  const criticalFields = ["current_price", "market_cap", "pe_ratio", "sector"];
+  const nonNullCount = criticalFields.filter(
+    (f) => data[f] !== null && data[f] !== undefined
+  ).length;
+  return nonNullCount >= 1; // At least one critical field must be present
+}
+
+/**
  * Fetch comprehensive stock data from Yahoo Finance with retry logic.
+ * Compatible with yahoo-finance2 v4.
  */
 export async function fetchStockData(ticker) {
   try {
@@ -117,17 +140,21 @@ export async function fetchStockData(ticker) {
         })
       );
       history = histResult?.quotes || [];
-    } catch {
+    } catch (histErr) {
       // Historical data may not be available
-      console.warn(`Could not fetch historical data for ${ticker}`);
+      console.warn(`Could not fetch historical data for ${ticker}: ${histErr.message}`);
     }
 
     const currentPrice =
       financial.currentPrice || price.regularMarketPrice || null;
 
+    // v4: marketCap moved from price to summaryDetail.nonDilutedMarketCap
+    const marketCapValue =
+      summary.nonDilutedMarketCap || price.marketCap || null;
+
     const data = {
       current_price: currentPrice,
-      market_cap: formatMarketCap(price.marketCap),
+      market_cap: formatMarketCap(marketCapValue),
       pe_ratio: summary.trailingPE || keyStats.forwardPE || null,
       pb_ratio: keyStats.priceToBook || null,
       eps: keyStats.trailingEps || null,
@@ -160,6 +187,16 @@ export async function fetchStockData(ticker) {
       stock_name:
         price.longName || price.shortName || ticker.replace(".NS", ""),
     };
+
+    // Validate that we got meaningful data
+    if (!validateStockData(data)) {
+      console.warn(
+        `Stock data for ${ticker} appears empty/invalid — Yahoo Finance may be returning stale data`
+      );
+      throw new Error(
+        `Yahoo Finance returned empty data for ${ticker}. The API may be temporarily unavailable.`
+      );
+    }
 
     return data;
   } catch (err) {

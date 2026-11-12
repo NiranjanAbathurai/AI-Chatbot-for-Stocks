@@ -14,14 +14,14 @@ import Groq from "groq-sdk";
 
 // ── Model fallback lists (newest / best free tier first) ────────────
 // When a model 404s or errors with "model not found", the next one is tried.
+// Updated Nov 2026 — older models may be deprecated.
 
 const GEMINI_MODELS = [
-  "gemini-2.5-flash-preview-05-20",
   "gemini-2.5-flash",
+  "gemini-2.5-pro",
   "gemini-2.0-flash",
   "gemini-2.0-flash-lite",
   "gemini-1.5-flash",
-  "gemini-1.5-flash-8b",
   "gemini-1.5-pro",
 ];
 
@@ -33,7 +33,6 @@ const OPENAI_MODELS = [
 ];
 
 const GROQ_MODELS = [
-  "meta-llama/llama-4-scout-17b-16e-instruct",
   "llama-3.3-70b-versatile",
   "llama-3.1-70b-versatile",
   "llama-3.1-8b-instant",
@@ -89,15 +88,21 @@ function getModelList(providerName) {
  */
 function isModelNotFoundError(err) {
   const msg = (err.message || "").toLowerCase();
+  const status = err.status || err.statusCode || (err.response && err.response.status);
   return (
-    msg.includes("model") &&
-    (msg.includes("not found") ||
-      msg.includes("not exist") ||
-      msg.includes("deprecated") ||
-      msg.includes("decommissioned") ||
-      msg.includes("unavailable") ||
-      msg.includes("invalid"))
-  ) || (err.status === 404) || (err.code === "model_not_found");
+    (msg.includes("model") &&
+      (msg.includes("not found") ||
+        msg.includes("not exist") ||
+        msg.includes("deprecated") ||
+        msg.includes("decommissioned") ||
+        msg.includes("unavailable") ||
+        msg.includes("invalid") ||
+        msg.includes("does not exist"))) ||
+    status === 404 ||
+    err.code === "model_not_found" ||
+    msg.includes("is not available") ||
+    msg.includes("has been removed")
+  );
 }
 
 // ── Provider-specific generators ────────────────────────────────────

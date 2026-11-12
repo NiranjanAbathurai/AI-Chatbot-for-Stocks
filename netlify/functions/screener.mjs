@@ -6,15 +6,15 @@
  *   GET /api/screener/scan       — Full scan (may be slow)
  *   GET /api/screener/top-buys   — Top BUY candidates
  *   GET /api/screener/top-shorts — Top SHORT candidates
+ *
+ * Updated for yahoo-finance2 v4.
  */
 
-import yahooFinance from "yahoo-finance2";
+import YahooFinance from "yahoo-finance2";
 import { NIFTY_50 } from "./lib/nifty-stocks.mjs";
 
-// Suppress yahoo-finance2 validation errors (e.g., non-JSON responses)
-yahooFinance.setGlobalConfig({
-  validation: { logErrors: false },
-});
+// Create a singleton instance with suppressed notices (v4 API)
+const yahooFinance = new YahooFinance({ suppressNotices: ["yahooSurvey"] });
 
 /**
  * Sleep for a given number of milliseconds.
@@ -26,7 +26,7 @@ function sleep(ms) {
 /**
  * Retry a function with exponential backoff.
  */
-async function withRetry(fn, maxRetries = 3, baseDelay = 1000) {
+async function withRetry(fn, maxRetries = 4, baseDelay = 1500) {
   let lastError;
   for (let attempt = 0; attempt <= maxRetries; attempt++) {
     try {
@@ -38,12 +38,17 @@ async function withRetry(fn, maxRetries = 3, baseDelay = 1000) {
         msg.includes("too many requests") ||
         msg.includes("429") ||
         msg.includes("rate limit") ||
-        msg.includes("not valid json");
+        msg.includes("not valid json") ||
+        msg.includes("fetch failed") ||
+        msg.includes("network") ||
+        msg.includes("econnreset") ||
+        msg.includes("timeout") ||
+        msg.includes("socket hang up");
 
       if (isRetryable && attempt < maxRetries) {
         const delay = baseDelay * Math.pow(2, attempt) + Math.random() * 500;
         console.log(
-          `Rate limited, retrying in ${Math.round(delay)}ms (attempt ${attempt + 1}/${maxRetries})...`
+          `Retryable error, retrying in ${Math.round(delay)}ms (attempt ${attempt + 1}/${maxRetries}): ${msg.slice(0, 80)}`
         );
         await sleep(delay);
         continue;
@@ -257,7 +262,7 @@ function scoreShortSignal(info, rsi) {
 
 async function analyzeStock(stock) {
   try {
-    // Fetch quote summary with retry
+    // Fetch quote summary with retry (v4 API)
     const quote = await withRetry(() =>
       yahooFinance.quoteSummary(stock.ticker, {
         modules: ["price", "summaryDetail", "defaultKeyStatistics", "financialData"],

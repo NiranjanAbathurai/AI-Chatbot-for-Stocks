@@ -22,7 +22,7 @@ const CORS_HEADERS = {
 /**
  * Format stock data into a readable prompt for AI agents.
  */
-function formatStockDataPrompt(stockName, ticker, stockData) {
+function formatStockDataPrompt(stockName, ticker, stockData, stockDataError) {
   const lines = [`# Stock Analysis Request: ${stockName} (${ticker})`, "", "## Current Stock Data:", ""];
 
   const fieldLabels = {
@@ -49,9 +49,11 @@ function formatStockDataPrompt(stockName, ticker, stockData) {
     industry: "Industry",
   };
 
+  let hasData = false;
   for (const [key, label] of Object.entries(fieldLabels)) {
     const value = stockData[key];
     if (value !== null && value !== undefined) {
+      hasData = true;
       lines.push(
         typeof value === "number"
           ? `- **${label}**: ${value.toFixed(2)}`
@@ -60,7 +62,19 @@ function formatStockDataPrompt(stockName, ticker, stockData) {
     }
   }
 
-  lines.push("", "Analyze this stock based on the data above. Use specific numbers in your analysis.");
+  if (!hasData) {
+    lines.push("⚠️ **Live market data is temporarily unavailable.**");
+    if (stockDataError) {
+      lines.push(`(Reason: ${stockDataError})`);
+    }
+    lines.push("");
+    lines.push("Please provide your analysis based on your general knowledge of this stock,");
+    lines.push("its fundamentals, recent news, sector trends, and historical performance.");
+    lines.push("Clearly state that live data was unavailable and your analysis is based on general knowledge.");
+  } else {
+    lines.push("", "Analyze this stock based on the data above. Use specific numbers in your analysis.");
+  }
+
   return lines.join("\n");
 }
 
@@ -147,39 +161,32 @@ export default async (req, context) => {
 
     // Step 2: Fetch stock data (with graceful degradation)
     let stockData;
+    let stockDataError = null;
     try {
       stockData = await fetchStockData(ticker);
     } catch (err) {
+      stockDataError = err.message;
       console.warn(`Stock data fetch failed for ${ticker}: ${err.message}`);
-      // Return a minimal stock data object so the debate can still proceed
-      // with whatever data is available (AI can still analyze based on general knowledge)
-      const isTooManyRequests = (err.message || "").toLowerCase().includes("too many requests");
-      if (isTooManyRequests) {
-        // Use empty data but let the debate continue
-        stockData = {
-          stock_name: ticker.replace(".NS", "").replace(".BO", ""),
-          current_price: null, market_cap: null, pe_ratio: null,
-          pb_ratio: null, eps: null, dividend_yield: null,
-          "52_week_high": null, "52_week_low": null,
-          debt_to_equity: null, roe: null, revenue_growth: null,
-          profit_growth: null, promoter_holding: null,
-          "1m_return": null, "3m_return": null,
-          "6m_return": null, "1y_return": null,
-          volume: null, avg_volume: null, sector: null, industry: null,
-        };
-      } else {
-        return new Response(
-          JSON.stringify({ detail: `Could not fetch data for ${ticker}: ${err.message}` }),
-          { status: 502, headers: CORS_HEADERS }
-        );
-      }
+      // Always allow the debate to proceed with general knowledge
+      // The AI agents can still provide analysis based on their training data
+      stockData = {
+        stock_name: ticker.replace(".NS", "").replace(".BO", ""),
+        current_price: null, market_cap: null, pe_ratio: null,
+        pb_ratio: null, eps: null, dividend_yield: null,
+        "52_week_high": null, "52_week_low": null,
+        debt_to_equity: null, roe: null, revenue_growth: null,
+        profit_growth: null, promoter_holding: null,
+        "1m_return": null, "3m_return": null,
+        "6m_return": null, "1y_return": null,
+        volume: null, avg_volume: null, sector: null, industry: null,
+      };
     }
 
     const fullName = stockData.stock_name || stockName;
     delete stockData.stock_name;
 
     // Step 3: Run the debate
-    const dataPrompt = formatStockDataPrompt(fullName, ticker, stockData);
+    const dataPrompt = formatStockDataPrompt(fullName, ticker, stockData, stockDataError);
 
     // Run Bull and Bear in parallel
     const [bullResponse, bearResponse] = await Promise.allSettled([

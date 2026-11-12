@@ -7,8 +7,11 @@
  *   POST /api/alerts/scan-now — Trigger immediate alert scan on watchlist
  */
 
-import yahooFinance from "yahoo-finance2";
+import YahooFinance from "yahoo-finance2";
 import { getValue, setValue } from "./lib/store.mjs";
+
+// Create a singleton instance with suppressed notices (v4 API)
+const yahooFinance = new YahooFinance({ suppressNotices: ["yahooSurvey"] });
 
 const WATCHLIST_KEY = "watchlist";
 const ALERTS_KEY = "alerts_history";
