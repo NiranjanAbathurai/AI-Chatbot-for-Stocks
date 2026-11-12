@@ -1,11 +1,106 @@
 /**
  * AI Service with provider failover: Gemini → OpenAI → Groq
  * API keys are read from Netlify environment variables.
+ *
+ * Models are auto-resolved: each provider has a ranked fallback list so that
+ * when a model is deprecated / removed, the next one is tried automatically
+ * — no redeployment needed.  You can also pin a model via env vars:
+ *   GEMINI_MODEL, OPENAI_MODEL, GROQ_MODEL
  */
 
 import { GoogleGenAI } from "@google/genai";
 import OpenAI from "openai";
 import Groq from "groq-sdk";
+
+// ── Model fallback lists (newest / best free tier first) ────────────
+// When a model 404s or errors with "model not found", the next one is tried.
+
+const GEMINI_MODELS = [
+  "gemini-2.5-flash-preview-05-20",
+  "gemini-2.5-flash",
+  "gemini-2.0-flash",
+  "gemini-2.0-flash-lite",
+  "gemini-1.5-flash",
+  "gemini-1.5-flash-8b",
+  "gemini-1.5-pro",
+];
+
+const OPENAI_MODELS = [
+  "gpt-4o-mini",
+  "gpt-4o",
+  "gpt-4-turbo",
+  "gpt-3.5-turbo",
+];
+
+const GROQ_MODELS = [
+  "meta-llama/llama-4-scout-17b-16e-instruct",
+  "llama-3.3-70b-versatile",
+  "llama-3.1-70b-versatile",
+  "llama-3.1-8b-instant",
+  "llama3-70b-8192",
+  "llama3-8b-8192",
+  "mixtral-8x7b-32768",
+  "gemma2-9b-it",
+];
+
+/**
+ * Return the model list for a provider, respecting an optional env-var override.
+ * If the env var is set, that model is tried first, then the fallback list.
+ */
+function getModelList(providerName) {
+  switch (providerName) {
+    case "gemini": {
+      const override = process.env.GEMINI_MODEL;
+      const list = [...GEMINI_MODELS];
+      if (override && !list.includes(override)) list.unshift(override);
+      else if (override) {
+        list.splice(list.indexOf(override), 1);
+        list.unshift(override);
+      }
+      return list;
+    }
+    case "openai": {
+      const override = process.env.OPENAI_MODEL;
+      const list = [...OPENAI_MODELS];
+      if (override && !list.includes(override)) list.unshift(override);
+      else if (override) {
+        list.splice(list.indexOf(override), 1);
+        list.unshift(override);
+      }
+      return list;
+    }
+    case "groq": {
+      const override = process.env.GROQ_MODEL;
+      const list = [...GROQ_MODELS];
+      if (override && !list.includes(override)) list.unshift(override);
+      else if (override) {
+        list.splice(list.indexOf(override), 1);
+        list.unshift(override);
+      }
+      return list;
+    }
+    default:
+      return [];
+  }
+}
+
+/**
+ * Check if an error indicates the model is not found / deprecated.
+ */
+function isModelNotFoundError(err) {
+  const msg = (err.message || "").toLowerCase();
+  return (
+    msg.includes("model") &&
+    (msg.includes("not found") ||
+      msg.includes("not exist") ||
+      msg.includes("deprecated") ||
+      msg.includes("decommissioned") ||
+      msg.includes("unavailable") ||
+      msg.includes("invalid"))
+  ) || (err.status === 404) || (err.code === "model_not_found");
+}
+
+// ── Provider-specific generators ────────────────────────────────────
 
 /**
  * Get the ordered list of AI providers based on available keys.
@@ -29,62 +124,119 @@ function getProviders() {
 }
 
 /**
- * Generate text using Gemini.
+ * Generate text using Gemini — tries each model in the fallback list.
  */
 async function generateGemini(apiKey, systemPrompt, userPrompt) {
   const ai = new GoogleGenAI({ apiKey });
-  const response = await ai.models.generateContent({
-    model: "gemini-2.0-flash",
-    contents: userPrompt,
-    config: {
-      systemInstruction: systemPrompt,
-      temperature: 0.7,
-      maxOutputTokens: 2048,
-    },
-  });
+  const models = getModelList("gemini");
 
-  if (response && response.text) return response.text;
-  throw new Error("Gemini returned empty response");
+  for (let i = 0; i < models.length; i++) {
+    const model = models[i];
+    try {
+      console.log(`  Gemini: trying model "${model}"`);
+      const response = await ai.models.generateContent({
+        model,
+        contents: userPrompt,
+        config: {
+          systemInstruction: systemPrompt,
+          temperature: 0.7,
+          maxOutputTokens: 2048,
+        },
+      });
+
+      if (response && response.text) {
+        console.log(`  Gemini: success with model "${model}"`);
+        return response.text;
+      }
+      throw new Error("Gemini returned empty response");
+    } catch (err) {
+      if (isModelNotFoundError(err) && i < models.length - 1) {
+        console.warn(`  Gemini: model "${model}" unavailable — trying next...`);
+        continue;
+      }
+      throw err;
+    }
+  }
+
+  throw new Error("Gemini: all models exhausted");
 }
 
 /**
- * Generate text using OpenAI.
+ * Generate text using OpenAI — tries each model in the fallback list.
  */
 async function generateOpenAI(apiKey, systemPrompt, userPrompt) {
   const client = new OpenAI({ apiKey });
-  const response = await client.chat.completions.create({
-    model: "gpt-4o-mini",
-    messages: [
-      { role: "system", content: systemPrompt },
-      { role: "user", content: userPrompt },
-    ],
-    temperature: 0.7,
-    max_tokens: 2048,
-  });
+  const models = getModelList("openai");
 
-  const content = response.choices?.[0]?.message?.content;
-  if (content) return content;
-  throw new Error("OpenAI returned empty response");
+  for (let i = 0; i < models.length; i++) {
+    const model = models[i];
+    try {
+      console.log(`  OpenAI: trying model "${model}"`);
+      const response = await client.chat.completions.create({
+        model,
+        messages: [
+          { role: "system", content: systemPrompt },
+          { role: "user", content: userPrompt },
+        ],
+        temperature: 0.7,
+        max_tokens: 2048,
+      });
+
+      const content = response.choices?.[0]?.message?.content;
+      if (content) {
+        console.log(`  OpenAI: success with model "${model}"`);
+        return content;
+      }
+      throw new Error("OpenAI returned empty response");
+    } catch (err) {
+      if (isModelNotFoundError(err) && i < models.length - 1) {
+        console.warn(`  OpenAI: model "${model}" unavailable — trying next...`);
+        continue;
+      }
+      throw err;
+    }
+  }
+
+  throw new Error("OpenAI: all models exhausted");
 }
 
 /**
- * Generate text using Groq.
+ * Generate text using Groq — tries each model in the fallback list.
  */
 async function generateGroq(apiKey, systemPrompt, userPrompt) {
   const client = new Groq({ apiKey });
-  const response = await client.chat.completions.create({
-    model: "llama-3.1-70b-versatile",
-    messages: [
-      { role: "system", content: systemPrompt },
-      { role: "user", content: userPrompt },
-    ],
-    temperature: 0.7,
-    max_tokens: 2048,
-  });
+  const models = getModelList("groq");
 
-  const content = response.choices?.[0]?.message?.content;
-  if (content) return content;
-  throw new Error("Groq returned empty response");
+  for (let i = 0; i < models.length; i++) {
+    const model = models[i];
+    try {
+      console.log(`  Groq: trying model "${model}"`);
+      const response = await client.chat.completions.create({
+        model,
+        messages: [
+          { role: "system", content: systemPrompt },
+          { role: "user", content: userPrompt },
+        ],
+        temperature: 0.7,
+        max_tokens: 2048,
+      });
+
+      const content = response.choices?.[0]?.message?.content;
+      if (content) {
+        console.log(`  Groq: success with model "${model}"`);
+        return content;
+      }
+      throw new Error("Groq returned empty response");
+    } catch (err) {
+      if (isModelNotFoundError(err) && i < models.length - 1) {
+        console.warn(`  Groq: model "${model}" unavailable — trying next...`);
+        continue;
+      }
+      throw err;
+    }
+  }
+
+  throw new Error("Groq: all models exhausted");
 }
 
 /**
