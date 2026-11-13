@@ -9,6 +9,7 @@ from services.providers.base import AIProvider
 from services.providers.gemini_provider import GeminiProvider
 from services.providers.openai_provider import OpenAIProvider
 from services.providers.groq_provider import GroqProvider
+from services.providers.anthropic_provider import AnthropicProvider
 
 logger = logging.getLogger(__name__)
 
@@ -24,6 +25,7 @@ class AIService:
     def __init__(self):
         # Initialize all providers
         self._provider_map: dict[str, AIProvider] = {
+            "anthropic": AnthropicProvider(),
             "gemini": GeminiProvider(),
             "openai": OpenAIProvider(),
             "groq": GroqProvider(),

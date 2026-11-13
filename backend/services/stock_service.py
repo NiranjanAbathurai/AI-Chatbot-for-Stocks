@@ -368,11 +368,11 @@ async def fetch_stock_data(ticker: str) -> dict:
             "stock_name": info.get("longName") or info.get("shortName") or ticker,
         }
 
-        return data
+        return data, hist
 
     try:
-        data = await loop.run_in_executor(None, _fetch)
-        return data
+        data, hist = await loop.run_in_executor(None, _fetch)
+        return data, hist
     except Exception as e:
         logger.error(f"Error fetching stock data for {ticker}: {e}")
         raise RuntimeError(f"Could not fetch data for {ticker}: {str(e)}")

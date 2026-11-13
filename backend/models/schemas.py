@@ -69,6 +69,7 @@ class DebateResponse(BaseModel):
     ticker: str
     stock_name: str
     stock_data: dict
+    technical_data: dict = {}
     bullish: AgentArgument
     bearish: AgentArgument
     verdict: VerdictResponse
