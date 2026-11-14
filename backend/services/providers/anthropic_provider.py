@@ -86,7 +86,11 @@ class AnthropicProvider(AIProvider):
             # Let the SDK auto-detect base_url and api_key from env vars.
             # If ANTHROPIC_BASE_URL is set (corporate gateway), the SDK uses it.
             # If ANTHROPIC_API_KEY is set in env, it takes precedence over .env.
-            self._client = AsyncAnthropic()
+            # Use a generous SDK-level timeout (2 min) — the asyncio.wait_for
+            # in ai_service.py handles the actual per-call timeout.
+            self._client = AsyncAnthropic(
+                timeout=120.0,
+            )
             base_url = os.getenv("ANTHROPIC_BASE_URL", "https://api.anthropic.com")
             logger.info(f"Anthropic: using base URL '{base_url}'")
             if _is_gateway():

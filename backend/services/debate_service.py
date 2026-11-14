@@ -1,4 +1,8 @@
-"""Debate orchestration service: Bull → Bear → Judge flow with technical analysis."""
+"""Debate orchestration service: Bull → Bear → Judge flow with technical analysis.
+
+Provides both individual agent functions (run_bull, run_bear, run_judge)
+and a combined run_debate() convenience wrapper.
+"""
 
 import asyncio
 import json
@@ -6,10 +10,11 @@ import logging
 import re
 from typing import Optional
 
-from services.ai_service import ai_service
-from prompts.bullish import BULLISH_SYSTEM_PROMPT
-from prompts.bearish import BEARISH_SYSTEM_PROMPT
-from prompts.judge import JUDGE_SYSTEM_PROMPT
+from config import settings
+from services.ai_service import ai_service, AIResult
+from prompts.bullish import get_bullish_prompt, BULLISH_SYSTEM_PROMPT
+from prompts.bearish import get_bearish_prompt, BEARISH_SYSTEM_PROMPT
+from prompts.judge import get_judge_prompt, JUDGE_SYSTEM_PROMPT
 
 logger = logging.getLogger(__name__)
 
@@ -217,48 +222,146 @@ def _parse_verdict(judge_response: str) -> dict:
     }
 
 
-async def run_debate(
-    stock_name: str, ticker: str, stock_data: dict,
-    technical_data: dict = None, stock_data_error: Optional[str] = None
+def _extract_error_info(e: Exception) -> dict:
+    """Extract per-provider error info from an exception."""
+    errors = {}
+    error_str = str(e)
+    if "Errors:" in error_str:
+        errors_part = error_str.split("Errors:", 1)[1].strip()
+        for err_item in errors_part.split("; "):
+            if ": " in err_item:
+                prov, msg = err_item.split(": ", 1)
+                errors[prov.strip()] = msg.strip()[:150]
+    else:
+        errors["all"] = str(e)[:150]
+    return errors
+
+
+# ── Individual Agent Functions ──────────────────────────────────
+
+
+async def run_bull(
+    stock_name: str,
+    ticker: str,
+    stock_data: dict,
+    technical_data: dict = None,
+    analysis_mode: str = "swing_trading",
+    stock_data_error: Optional[str] = None,
 ) -> dict:
     """
-    Run the full debate: Bull and Bear in parallel, then Judge.
-    Now includes technical analysis data (S/R, patterns, swing indicators).
+    Run the Bull analyst independently.
+
+    Returns dict with: agent, argument, provider, providers_attempted, errors
     """
-    # Format the stock data prompt
     data_prompt = _format_stock_data_prompt(stock_name, ticker, stock_data, stock_data_error)
-
-    # Format technical analysis data
     tech_prompt = _format_technical_data_prompt(technical_data or {})
-
-    # Combined prompt for agents
     full_prompt = data_prompt + tech_prompt
 
-    # ── Step 1: Run Bull and Bear in parallel ───────────────────
-    logger.info(f"Starting debate for {stock_name} ({ticker})")
+    system_prompt = get_bullish_prompt(analysis_mode)
 
-    bull_task = ai_service.generate(
-        system_prompt=BULLISH_SYSTEM_PROMPT,
-        user_prompt=full_prompt,
-    )
-    bear_task = ai_service.generate(
-        system_prompt=BEARISH_SYSTEM_PROMPT,
-        user_prompt=full_prompt,
-    )
+    logger.info(f"Running Bull for {stock_name} ({ticker}) mode={analysis_mode}")
 
-    bull_response, bear_response = await asyncio.gather(
-        bull_task, bear_task, return_exceptions=True
-    )
+    try:
+        result = await ai_service.generate(
+            system_prompt=system_prompt,
+            user_prompt=full_prompt,
+        )
+        return {
+            "agent": "🐂 Bullish Analyst",
+            "argument": result.text,
+            "provider": result.provider,
+            "providers_attempted": result.providers_attempted,
+            "errors": result.errors,
+        }
+    except Exception as e:
+        logger.error(f"Bull agent failed: {e}")
+        return {
+            "agent": "🐂 Bullish Analyst",
+            "argument": "⚠️ The Bullish Analyst could not generate an analysis at this time.",
+            "provider": "none",
+            "providers_attempted": [p.name for p in ai_service._providers],
+            "errors": _extract_error_info(e),
+        }
 
-    if isinstance(bull_response, Exception):
-        logger.error(f"Bull agent failed: {bull_response}")
-        bull_response = "⚠️ The Bullish Analyst could not generate an analysis at this time."
 
-    if isinstance(bear_response, Exception):
-        logger.error(f"Bear agent failed: {bear_response}")
-        bear_response = "⚠️ The Bearish Analyst could not generate an analysis at this time."
+async def run_bear(
+    stock_name: str,
+    ticker: str,
+    stock_data: dict,
+    technical_data: dict = None,
+    analysis_mode: str = "swing_trading",
+    bull_argument: str = "",
+    stock_data_error: Optional[str] = None,
+) -> dict:
+    """
+    Run the Bear analyst independently.
+    Optionally includes the bull_argument for the bear to counter.
 
-    # ── Step 2: Run Judge with both arguments ───────────────────
+    Returns dict with: agent, argument, provider, providers_attempted, errors
+    """
+    data_prompt = _format_stock_data_prompt(stock_name, ticker, stock_data, stock_data_error)
+    tech_prompt = _format_technical_data_prompt(technical_data or {})
+
+    # Build user prompt — include bull argument if provided
+    if bull_argument:
+        full_prompt = f"""{data_prompt}{tech_prompt}
+
+---
+
+## 🐂 Bull Analyst's Argument (counter this):
+{bull_argument}
+
+---
+
+Now present your bearish counter-argument. Directly address and counter the Bull's key points."""
+    else:
+        full_prompt = data_prompt + tech_prompt
+
+    system_prompt = get_bearish_prompt(analysis_mode)
+
+    logger.info(f"Running Bear for {stock_name} ({ticker}) mode={analysis_mode}")
+
+    try:
+        result = await ai_service.generate(
+            system_prompt=system_prompt,
+            user_prompt=full_prompt,
+        )
+        return {
+            "agent": "🐻 Bearish Analyst",
+            "argument": result.text,
+            "provider": result.provider,
+            "providers_attempted": result.providers_attempted,
+            "errors": result.errors,
+        }
+    except Exception as e:
+        logger.error(f"Bear agent failed: {e}")
+        return {
+            "agent": "🐻 Bearish Analyst",
+            "argument": "⚠️ The Bearish Analyst could not generate an analysis at this time.",
+            "provider": "none",
+            "providers_attempted": [p.name for p in ai_service._providers],
+            "errors": _extract_error_info(e),
+        }
+
+
+async def run_judge(
+    stock_name: str,
+    ticker: str,
+    stock_data: dict,
+    technical_data: dict = None,
+    analysis_mode: str = "swing_trading",
+    bull_argument: str = "",
+    bear_argument: str = "",
+    stock_data_error: Optional[str] = None,
+) -> dict:
+    """
+    Run the Judge independently with both bull and bear arguments.
+
+    Returns dict with: agent, recommendation, confidence, analysis, provider, providers_attempted, errors
+    """
+    data_prompt = _format_stock_data_prompt(stock_name, ticker, stock_data, stock_data_error)
+    tech_prompt = _format_technical_data_prompt(technical_data or {})
+
     judge_prompt = f"""# Stock: {stock_name} ({ticker})
 
 ## Stock Data Summary:
@@ -269,42 +372,111 @@ async def run_debate(
 ---
 
 ## 🐂 Bullish Analyst's Argument:
-{bull_response}
+{bull_argument}
 
 ---
 
 ## 🐻 Bearish Analyst's Argument:
-{bear_response}
+{bear_argument}
 
 ---
 
 Now evaluate both arguments and deliver your verdict. Remember to start with your verdict and confidence score.
-Include specific support/resistance levels, chart pattern analysis, and actionable swing trading levels in your final recommendation."""
+Include specific support/resistance levels, chart pattern analysis, and actionable trading levels in your final recommendation."""
+
+    system_prompt = get_judge_prompt(analysis_mode)
+
+    judge_timeout = settings.AI_JUDGE_TIMEOUT
+    logger.info(f"Running Judge for {stock_name} ({ticker}) mode={analysis_mode} timeout={judge_timeout}s")
 
     try:
-        judge_response = await ai_service.generate(
-            system_prompt=JUDGE_SYSTEM_PROMPT,
+        result = await ai_service.generate(
+            system_prompt=system_prompt,
             user_prompt=judge_prompt,
+            timeout=judge_timeout,
         )
-    except Exception as e:
-        logger.error(f"Judge agent failed: {e}")
-        judge_response = "⚠️ The Judge could not deliver a verdict at this time. Please review both arguments and form your own conclusion."
-
-    verdict = _parse_verdict(judge_response)
-
-    return {
-        "bullish": {
-            "agent": "🐂 Bullish Analyst",
-            "argument": bull_response,
-        },
-        "bearish": {
-            "agent": "🐻 Bearish Analyst",
-            "argument": bear_response,
-        },
-        "verdict": {
+        verdict = _parse_verdict(result.text)
+        return {
             "agent": "⚖️ Judge",
             "recommendation": verdict["recommendation"],
             "confidence": verdict["confidence"],
             "analysis": verdict["analysis"],
-        },
+            "provider": result.provider,
+            "providers_attempted": result.providers_attempted,
+            "errors": result.errors,
+        }
+    except Exception as e:
+        logger.error(f"Judge agent failed: {e}")
+        return {
+            "agent": "⚖️ Judge",
+            "recommendation": "HOLD",
+            "confidence": 5,
+            "analysis": "⚠️ The Judge could not deliver a verdict at this time. Please review both arguments and form your own conclusion.",
+            "provider": "none",
+            "providers_attempted": [p.name for p in ai_service._providers],
+            "errors": _extract_error_info(e),
+        }
+
+
+# ── Combined Debate (backward compat) ──────────────────────────
+
+
+async def run_debate(
+    stock_name: str, ticker: str, stock_data: dict,
+    technical_data: dict = None, stock_data_error: Optional[str] = None,
+    analysis_mode: str = "swing_trading",
+) -> dict:
+    """
+    Run the full debate: Bull and Bear in parallel, then Judge.
+    Now supports analysis_mode for mode-specific prompts.
+    Returns provider metadata for each agent in the response.
+    """
+    logger.info(f"Starting full debate for {stock_name} ({ticker}) mode={analysis_mode}")
+
+    # ── Step 1: Run Bull and Bear in parallel ───────────────────
+    bull_task = run_bull(
+        stock_name, ticker, stock_data, technical_data,
+        analysis_mode, stock_data_error,
+    )
+    bear_task = run_bear(
+        stock_name, ticker, stock_data, technical_data,
+        analysis_mode, "", stock_data_error,  # No bull argument for parallel run
+    )
+
+    bull_result, bear_result = await asyncio.gather(
+        bull_task, bear_task, return_exceptions=True
+    )
+
+    # Handle exceptions from gather
+    if isinstance(bull_result, Exception):
+        logger.error(f"Bull agent exception in debate: {bull_result}")
+        bull_result = {
+            "agent": "🐂 Bullish Analyst",
+            "argument": "⚠️ The Bullish Analyst could not generate an analysis at this time.",
+            "provider": "none",
+            "providers_attempted": [p.name for p in ai_service._providers],
+            "errors": {"all": str(bull_result)[:150]},
+        }
+
+    if isinstance(bear_result, Exception):
+        logger.error(f"Bear agent exception in debate: {bear_result}")
+        bear_result = {
+            "agent": "🐻 Bearish Analyst",
+            "argument": "⚠️ The Bearish Analyst could not generate an analysis at this time.",
+            "provider": "none",
+            "providers_attempted": [p.name for p in ai_service._providers],
+            "errors": {"all": str(bear_result)[:150]},
+        }
+
+    # ── Step 2: Run Judge with both arguments ───────────────────
+    judge_result = await run_judge(
+        stock_name, ticker, stock_data, technical_data,
+        analysis_mode, bull_result["argument"], bear_result["argument"],
+        stock_data_error,
+    )
+
+    return {
+        "bullish": bull_result,
+        "bearish": bear_result,
+        "verdict": judge_result,
     }

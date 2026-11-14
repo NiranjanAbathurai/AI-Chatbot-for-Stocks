@@ -1,12 +1,20 @@
-"""Stock data service: ticker resolution + yfinance data fetching."""
+"""Stock data service: ticker resolution + multi-source data fetching.
+
+Data source strategy (controlled by STOCK_DATA_SOURCE env var):
+  - "google_finance" (default): Scrapes Google Finance. Fast, works behind
+    corporate proxies (Zscaler, etc.) that block Yahoo Finance.
+  - "yfinance": Uses yfinance library. Best data quality when it works,
+    but hangs behind Zscaler/corporate firewalls.
+  - "auto": Tries Google Finance first, falls back to yfinance.
+"""
 
 import asyncio
 import logging
-from datetime import datetime, timedelta
 from typing import Optional
 
-import yfinance as yf
 import pandas as pd
+
+from config import settings
 
 logger = logging.getLogger(__name__)
 
@@ -247,14 +255,21 @@ def resolve_ticker(stock_name: str) -> Optional[str]:
     if len(matches) == 1:
         return matches[0][1]
 
-    # Try yfinance search as last resort
-    try:
-        ticker = yf.Ticker(potential_ticker)
-        info = ticker.info
-        if info and info.get("regularMarketPrice"):
-            return potential_ticker
-    except Exception:
-        pass
+    # If yfinance is enabled, try it as last resort for unknown tickers
+    if settings.STOCK_DATA_SOURCE in ("yfinance", "auto"):
+        try:
+            import yfinance as yf
+            ticker = yf.Ticker(potential_ticker)
+            info = ticker.info
+            if info and info.get("regularMarketPrice"):
+                return potential_ticker
+        except Exception:
+            pass
+
+    # For google_finance mode, just accept the .NS ticker if it looks valid
+    # (Google Finance will return empty data if the ticker doesn't exist)
+    if len(upper) <= 20 and upper.isalnum():
+        return potential_ticker
 
     return None
 
@@ -282,6 +297,8 @@ def get_similar_tickers(stock_name: str) -> list[str]:
 
     return unique_suggestions[:10]
 
+
+# ── Helpers ──────────────────────────────────────────────────────
 
 def _format_market_cap(value: Optional[float]) -> Optional[str]:
     """Format market cap into human-readable Indian format."""
@@ -314,65 +331,198 @@ def _calculate_return(hist: pd.DataFrame, days: int) -> Optional[float]:
     return None
 
 
-async def fetch_stock_data(ticker: str) -> dict:
+def _is_data_sufficient(data: dict) -> bool:
+    """Check if stock data has enough non-null fields to be useful.
+
+    We consider data sufficient if at least current_price and 2 other
+    key fields are present.
     """
-    Fetch comprehensive stock data from yfinance.
+    key_fields = [
+        "current_price", "pe_ratio", "52_week_high", "52_week_low",
+        "market_cap", "eps", "volume",
+    ]
+    non_null = sum(1 for f in key_fields if data.get(f) is not None)
+    return non_null >= 3
+
+
+def _merge_data(primary: dict, fallback: dict) -> dict:
+    """Merge fallback data into primary, filling only null fields."""
+    merged = dict(primary)
+    for key, value in fallback.items():
+        if key.startswith("_"):
+            continue  # Skip internal markers
+        if merged.get(key) is None and value is not None:
+            merged[key] = value
+    return merged
+
+
+# ── yfinance fetcher (opt-in) ────────────────────────────────────
+
+def _fetch_yfinance_sync(ticker: str) -> tuple[dict, pd.DataFrame]:
+    """Fetch stock data from yfinance synchronously (runs in thread pool).
+
+    WARNING: This can hang indefinitely behind corporate proxies (Zscaler).
+    Only used when STOCK_DATA_SOURCE is 'yfinance' or 'auto'.
+    """
+    import yfinance as yf
+
+    stock = yf.Ticker(ticker)
+    info = stock.info or {}
+
+    # Fetch historical data for return calculations
+    try:
+        hist = stock.history(period="1y")
+    except Exception:
+        hist = pd.DataFrame()
+
+    # Calculate returns
+    return_1m = _calculate_return(hist, 21)   # ~21 trading days
+    return_3m = _calculate_return(hist, 63)   # ~63 trading days
+    return_6m = _calculate_return(hist, 126)  # ~126 trading days
+    return_1y = _calculate_return(hist, 252)  # ~252 trading days
+
+    # Build stock data dict
+    data = {
+        "current_price": info.get("currentPrice") or info.get("regularMarketPrice"),
+        "market_cap": _format_market_cap(info.get("marketCap")),
+        "pe_ratio": info.get("trailingPE") or info.get("forwardPE"),
+        "pb_ratio": info.get("priceToBook"),
+        "eps": info.get("trailingEps"),
+        "dividend_yield": round(info.get("dividendYield", 0) * 100, 2) if info.get("dividendYield") else None,
+        "52_week_high": info.get("fiftyTwoWeekHigh"),
+        "52_week_low": info.get("fiftyTwoWeekLow"),
+        "debt_to_equity": info.get("debtToEquity"),
+        "roe": info.get("returnOnEquity"),
+        "revenue_growth": round(info.get("revenueGrowth", 0) * 100, 2) if info.get("revenueGrowth") else None,
+        "profit_growth": round(info.get("earningsGrowth", 0) * 100, 2) if info.get("earningsGrowth") else None,
+        "promoter_holding": info.get("heldPercentInsiders"),
+        "1m_return": return_1m,
+        "3m_return": return_3m,
+        "6m_return": return_6m,
+        "1y_return": return_1y,
+        "volume": info.get("volume") or info.get("regularMarketVolume"),
+        "avg_volume": info.get("averageVolume"),
+        "sector": info.get("sector"),
+        "industry": info.get("industry"),
+        "stock_name": info.get("longName") or info.get("shortName") or ticker,
+        "_source": "yfinance",
+    }
+
+    return data, hist
+
+
+async def _fetch_yfinance(ticker: str) -> tuple[dict, pd.DataFrame]:
+    """Fetch stock data from yfinance asynchronously.
+
+    WARNING: yfinance can hang behind corporate proxies. This uses
+    run_in_executor which cannot kill the underlying thread. Only use
+    when STOCK_DATA_SOURCE is 'yfinance' or 'auto'.
+    """
+    loop = asyncio.get_event_loop()
+    return await loop.run_in_executor(None, _fetch_yfinance_sync, ticker)
+
+
+# ── Main fetch function ──────────────────────────────────────────
+
+async def fetch_stock_data(ticker: str) -> tuple[dict, pd.DataFrame]:
+    """
+    Fetch comprehensive stock data using the configured data source.
+
+    Strategy depends on STOCK_DATA_SOURCE setting:
+      - "google_finance" (default): Google Finance only (fast, proxy-safe)
+      - "yfinance": yfinance only (best data, but may hang behind proxies)
+      - "auto": Google Finance first, yfinance fallback if insufficient
 
     Args:
         ticker: NSE ticker symbol (e.g., 'AXISBANK.NS').
 
     Returns:
-        Dictionary with stock data fields.
+        Tuple of (stock_data_dict, historical_dataframe).
+        historical_dataframe may be empty when using Google Finance
+        (no historical data available from scraping).
     """
-    loop = asyncio.get_event_loop()
+    from services.google_finance import fetch_google_finance
 
-    def _fetch():
-        stock = yf.Ticker(ticker)
-        info = stock.info or {}
+    source = settings.STOCK_DATA_SOURCE.lower().strip()
+    hist = pd.DataFrame()
 
-        # Fetch historical data for return calculations
+    logger.info(f"Fetching stock data for {ticker} (source={source})")
+
+    # ── Strategy: Google Finance only (default) ──────────────────
+    if source == "google_finance":
+        gf_data = await fetch_google_finance(ticker)
+        if gf_data and gf_data.get("current_price") is not None:
+            gf_data["_data_source"] = "google_finance"
+            logger.info(f"Google Finance: {ticker} price={gf_data['current_price']}")
+            return gf_data, hist
+
+        raise RuntimeError(
+            f"Google Finance returned no data for {ticker}. "
+            f"Check if the ticker is valid or try STOCK_DATA_SOURCE=auto"
+        )
+
+    # ── Strategy: yfinance only ──────────────────────────────────
+    if source == "yfinance":
         try:
-            hist = stock.history(period="1y")
-        except Exception:
-            hist = pd.DataFrame()
+            yf_data, hist = await _fetch_yfinance(ticker)
+            if _is_data_sufficient(yf_data):
+                yf_data["_data_source"] = "yfinance"
+                return yf_data, hist
+            logger.warning(f"yfinance returned insufficient data for {ticker}")
+            yf_data["_data_source"] = "yfinance_partial"
+            return yf_data, hist
+        except Exception as e:
+            raise RuntimeError(f"yfinance failed for {ticker}: {e}")
 
-        # Calculate returns
-        return_1m = _calculate_return(hist, 21)   # ~21 trading days
-        return_3m = _calculate_return(hist, 63)   # ~63 trading days
-        return_6m = _calculate_return(hist, 126)  # ~126 trading days
-        return_1y = _calculate_return(hist, 252)  # ~252 trading days
+    # ── Strategy: auto (Google Finance first, yfinance fallback) ─
+    if source == "auto":
+        # Step 1: Try Google Finance (fast, reliable behind proxies)
+        gf_data = {}
+        gf_error = None
+        try:
+            gf_data = await fetch_google_finance(ticker)
+            if gf_data and _is_data_sufficient(gf_data):
+                gf_data["_data_source"] = "google_finance"
+                logger.info(f"Auto mode: using Google Finance for {ticker}")
+                return gf_data, hist
+        except Exception as e:
+            gf_error = str(e)[:200]
+            logger.warning(f"Auto mode: Google Finance failed for {ticker}: {gf_error}")
 
-        # Build stock data dict
-        data = {
-            "current_price": info.get("currentPrice") or info.get("regularMarketPrice"),
-            "market_cap": _format_market_cap(info.get("marketCap")),
-            "pe_ratio": info.get("trailingPE") or info.get("forwardPE"),
-            "pb_ratio": info.get("priceToBook"),
-            "eps": info.get("trailingEps"),
-            "dividend_yield": round(info.get("dividendYield", 0) * 100, 2) if info.get("dividendYield") else None,
-            "52_week_high": info.get("fiftyTwoWeekHigh"),
-            "52_week_low": info.get("fiftyTwoWeekLow"),
-            "debt_to_equity": info.get("debtToEquity"),
-            "roe": info.get("returnOnEquity"),
-            "revenue_growth": round(info.get("revenueGrowth", 0) * 100, 2) if info.get("revenueGrowth") else None,
-            "profit_growth": round(info.get("earningsGrowth", 0) * 100, 2) if info.get("earningsGrowth") else None,
-            "promoter_holding": info.get("heldPercentInsiders"),
-            "1m_return": return_1m,
-            "3m_return": return_3m,
-            "6m_return": return_6m,
-            "1y_return": return_1y,
-            "volume": info.get("volume") or info.get("regularMarketVolume"),
-            "avg_volume": info.get("averageVolume"),
-            "sector": info.get("sector"),
-            "industry": info.get("industry"),
-            "stock_name": info.get("longName") or info.get("shortName") or ticker,
-        }
+        # Step 2: Try yfinance as fallback
+        yf_data = {}
+        yf_error = None
+        try:
+            yf_data, hist = await _fetch_yfinance(ticker)
+            if _is_data_sufficient(yf_data):
+                # Merge Google Finance data into yfinance (yfinance is richer)
+                if gf_data:
+                    merged = _merge_data(yf_data, gf_data)
+                    merged["_data_source"] = "yfinance+google_finance"
+                    return merged, hist
+                yf_data["_data_source"] = "yfinance"
+                return yf_data, hist
+        except Exception as e:
+            yf_error = str(e)[:200]
+            logger.warning(f"Auto mode: yfinance also failed for {ticker}: {yf_error}")
 
-        return data, hist
+        # Step 3: Return whatever partial data we have
+        if gf_data and gf_data.get("current_price") is not None:
+            gf_data["_data_source"] = "google_finance_partial"
+            return gf_data, hist
 
-    try:
-        data, hist = await loop.run_in_executor(None, _fetch)
-        return data, hist
-    except Exception as e:
-        logger.error(f"Error fetching stock data for {ticker}: {e}")
-        raise RuntimeError(f"Could not fetch data for {ticker}: {str(e)}")
+        if yf_data:
+            yf_data["_data_source"] = "yfinance_partial"
+            return yf_data, hist
+
+        raise RuntimeError(
+            f"Could not fetch data for {ticker}: "
+            f"Google Finance: {gf_error or 'no data'}; "
+            f"yfinance: {yf_error or 'no data'}"
+        )
+
+    # Unknown source
+    raise ValueError(
+        f"Unknown STOCK_DATA_SOURCE='{source}'. "
+        f"Valid options: google_finance, yfinance, auto"
+    )

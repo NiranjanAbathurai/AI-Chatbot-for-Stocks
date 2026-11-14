@@ -2,9 +2,17 @@
 <html lang="en">
 <head>
     <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Stock Debate Chat — Swing & Options Trading</title>
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover, user-scalable=no">
+    <title>Stock Debate Chat — AI Trading Analysis</title>
     <link rel="stylesheet" href="/static/style.css">
+    <!-- PWA Support -->
+    <link rel="manifest" href="/manifest.json">
+    <meta name="theme-color" content="#0f0f14">
+    <meta name="apple-mobile-web-app-capable" content="yes">
+    <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+    <meta name="apple-mobile-web-app-title" content="StockChat">
+    <link rel="apple-touch-icon" href="/static/icons/icon-192.png">
+    <meta name="description" content="AI-powered stock analysis with Bull, Bear, and Judge agents for NSE stocks">
     <!-- Markdown rendering -->
     <script src="https://cdn.jsdelivr.net/npm/marked/marked.min.js"></script>
 </head>
@@ -14,75 +22,183 @@
         <header class="app-header">
             <div class="header-content">
                 <h1>📊 Stock Debate Chat</h1>
-                <p class="subtitle">AI-powered Swing & Options Trading Analysis for NSE Stocks</p>
+                <p class="subtitle">AI-powered Trading Analysis for NSE Stocks</p>
             </div>
-            <div class="header-status" id="providerStatus">
-                <span class="status-dot"></span>
-                <span class="status-text">Connecting...</span>
+            <div class="header-actions">
+                <div class="header-status" id="providerStatus">
+                    <span class="status-dot"></span>
+                    <span class="status-text">Connecting...</span>
+                </div>
             </div>
         </header>
 
-        <!-- Discover Section (Phase 2) -->
-        <div class="discover-section" id="discoverSection" style="display: none;">
-            <div class="discover-cards">
-                <div class="discover-card buy-card" id="topBuysCard">
-                    <h3>🟢 Top Buys</h3>
-                    <div class="discover-list" id="topBuysList">
-                        <p class="loading-text">Scanning...</p>
+        <!-- Tab Navigation -->
+        <nav class="tab-nav">
+            <button class="tab-btn active" data-tab="pattern-scanner" onclick="switchTab('pattern-scanner')">📐 Pattern Scanner</button>
+            <button class="tab-btn" data-tab="stock-analyzer" onclick="switchTab('stock-analyzer')">📊 Stock Analyzer</button>
+            <button class="tab-btn" data-tab="active-trading" onclick="switchTab('active-trading')">📈 Active Trading</button>
+        </nav>
+
+        <!-- ═══════════════════════════════════════════════════════ -->
+        <!-- Tab 1: Pattern Scanner -->
+        <!-- ═══════════════════════════════════════════════════════ -->
+        <div class="tab-content" id="patternScannerTab">
+            <div class="pattern-scanner-tab-content">
+                <div class="scanner-header">
+                    <h3>📐 Chart Pattern Scanner</h3>
+                    <p class="scanner-subtitle">Scan NIFTY 50 stocks for active chart patterns</p>
+                </div>
+                <div class="scanner-controls">
+                    <div class="scanner-filters">
+                        <select id="patternTypeFilter" class="scanner-select">
+                            <option value="">All Patterns</option>
+                            <option value="bullish">🟢 Bullish Only</option>
+                            <option value="bearish">🔴 Bearish Only</option>
+                            <option value="sideways">🟡 Sideways Only</option>
+                        </select>
+                    </div>
+                    <div class="scanner-actions">
+                        <button class="scanner-scan-btn" id="scanPatternsBtn" onclick="runPatternScan(false)">
+                            🔍 Scan Now
+                        </button>
+                        <button class="scanner-refresh-btn" id="refreshPatternsBtn" onclick="runPatternScan(true)" title="Force fresh scan">
+                            🔄
+                        </button>
                     </div>
                 </div>
-                <div class="discover-card short-card" id="topShortsCard">
-                    <h3>🔴 Top Shorts</h3>
-                    <div class="discover-list" id="topShortsList">
-                        <p class="loading-text">Scanning...</p>
+                <div class="scanner-status" id="scannerStatus"></div>
+                <div class="scanner-results" id="scannerResults">
+                    <div class="scanner-empty">
+                        <p>Click <strong>"Scan Now"</strong> to find stocks with active chart patterns.</p>
+                        <p class="scanner-hint">Scans NIFTY 50 stocks for Double Top/Bottom, H&S, Triangles, Flags, Wedges & more.</p>
                     </div>
                 </div>
             </div>
         </div>
 
-        <!-- Chat Messages Area -->
-        <div class="chat-container" id="chatContainer">
-            <div class="chat-messages" id="chatMessages">
-                <!-- Welcome message -->
-                <div class="message system-message welcome">
-                    <div class="message-content">
-                        <h2>Welcome to Stock Debate Chat! 👋</h2>
-                        <p>Enter any NSE stock name below for a comprehensive <strong>swing & options trading</strong> analysis:</p>
-                        <ul>
-                            <li>📐 <strong>Technical Analysis</strong> — Support/Resistance, Fibonacci, Pivot Points, Moving Averages</li>
-                            <li>📈 <strong>Chart Patterns</strong> — Double Top/Bottom, H&S, Triangles, Flags, Wedges</li>
-                            <li>🔧 <strong>Swing Indicators</strong> — RSI, MACD, Bollinger Bands, ATR, Stochastic RSI, Volume</li>
-                            <li>🐂 <strong>The Bull</strong> — Makes the bullish case with entry/SL/target levels</li>
-                            <li>🐻 <strong>The Bear</strong> — Makes the bearish case with downside risk levels</li>
-                            <li>⚖️ <strong>The Judge</strong> — Delivers final verdict with actionable trade setup & options strategy</li>
-                        </ul>
-                        <p class="hint">Try: <span class="stock-hint" onclick="analyzeStock('Reliance')">Reliance</span>, 
-                        <span class="stock-hint" onclick="analyzeStock('TCS')">TCS</span>, 
-                        <span class="stock-hint" onclick="analyzeStock('HDFC Bank')">HDFC Bank</span>, 
-                        <span class="stock-hint" onclick="analyzeStock('Infosys')">Infosys</span></p>
+        <!-- ═══════════════════════════════════════════════════════ -->
+        <!-- Tab 2: Stock Analyzer (Input at TOP, results below) -->
+        <!-- ═══════════════════════════════════════════════════════ -->
+        <div class="tab-content hidden" id="stockAnalyzerTab">
+            <!-- Input Area — PINNED AT TOP -->
+            <div class="input-area">
+                <div class="input-container">
+                    <div class="stock-search-wrapper" id="stockSearchWrapper">
+                        <input
+                            type="text"
+                            id="stockInput"
+                            placeholder="Search NSE stocks (e.g., Reliance, TCS, HDFC Bank)..."
+                            autocomplete="off"
+                            maxlength="100"
+                        >
+                        <div class="stock-dropdown" id="stockDropdown">
+                            <div class="dropdown-header">
+                                <div class="category-pills" id="categoryPills">
+                                    <button class="cat-pill active" data-category="all">All</button>
+                                    <!-- Category pills populated dynamically -->
+                                </div>
+                            </div>
+                            <div class="dropdown-list" id="dropdownList">
+                                <div class="dropdown-loading">Loading stocks...</div>
+                            </div>
+                            <div class="dropdown-footer">
+                                <span id="stockCount">0 stocks</span>
+                                <span class="dropdown-hint">↑↓ Navigate • Enter Select • Esc Close</span>
+                            </div>
+                        </div>
+                    </div>
+                    <select id="analysisMode" class="analysis-mode-select">
+                        <option value="swing_trading">🔄 Swing Trading</option>
+                        <option value="option_trading">📊 Option Trading</option>
+                        <option value="short_term">⚡ Short Term</option>
+                        <option value="investment">🏦 Investment</option>
+                    </select>
+                    <button id="analyzeBtn" onclick="handleAnalyze()">
+                        <span class="btn-text">Analyze</span>
+                        <span class="btn-icon">🔍</span>
+                    </button>
+                </div>
+                <p class="disclaimer-footer">
+                    ⚠️ AI-generated analysis for educational purposes only. Not financial advice.
+                </p>
+            </div>
+
+            <!-- Chat Messages Area — SCROLLABLE BELOW INPUT -->
+            <div class="chat-container" id="chatContainer">
+                <div class="chat-messages" id="chatMessages">
+                    <!-- Welcome message -->
+                    <div class="message system-message welcome">
+                        <div class="message-content">
+                            <h2>Welcome to Stock Analyzer! 👋</h2>
+                            <p>Enter any NSE stock name above and select your analysis mode:</p>
+                            <ul>
+                                <li>📐 <strong>Technical Analysis</strong> — Support/Resistance, Fibonacci, Pivot Points, Moving Averages</li>
+                                <li>📈 <strong>Chart Patterns</strong> — Double Top/Bottom, H&S, Triangles, Flags, Wedges</li>
+                                <li>🔧 <strong>Swing Indicators</strong> — RSI, MACD, Bollinger Bands, ATR, Stochastic RSI, Volume</li>
+                                <li>🐂 <strong>The Bull</strong> — Makes the bullish case with entry/SL/target levels</li>
+                                <li>🐻 <strong>The Bear</strong> — Counters with bearish risks and downside levels</li>
+                                <li>⚖️ <strong>The Judge</strong> — Delivers final verdict with actionable trade setup</li>
+                            </ul>
+                            <p class="hint">Try: <span class="stock-hint" onclick="analyzeStock('Reliance')">Reliance</span>, 
+                            <span class="stock-hint" onclick="analyzeStock('TCS')">TCS</span>, 
+                            <span class="stock-hint" onclick="analyzeStock('HDFC Bank')">HDFC Bank</span>, 
+                            <span class="stock-hint" onclick="analyzeStock('Infosys')">Infosys</span></p>
+                        </div>
                     </div>
                 </div>
             </div>
         </div>
 
-        <!-- Input Area -->
-        <div class="input-area">
-            <div class="input-container">
-                <input 
-                    type="text" 
-                    id="stockInput" 
-                    placeholder="Enter stock name (e.g., Axis Bank, TCS, Reliance)..." 
-                    autocomplete="off"
-                    maxlength="100"
-                >
-                <button id="analyzeBtn" onclick="handleAnalyze()">
-                    <span class="btn-text">Analyze</span>
-                    <span class="btn-icon">🔍</span>
-                </button>
+        <!-- ═══════════════════════════════════════════════════════ -->
+        <!-- Tab 3: Active Trading Scanner -->
+        <!-- ═══════════════════════════════════════════════════════ -->
+        <div class="tab-content hidden" id="activeTradingTab">
+            <div class="active-trading-tab-content">
+                <div class="active-trading-header">
+                    <h3>📈 Active Trading Scanner</h3>
+                    <p class="active-trading-subtitle">Find high volatility & high volume NIFTY 50 stocks for swing/active trading</p>
+                </div>
+                <div class="active-trading-controls">
+                    <div class="active-trading-filters">
+                        <select id="volatileSortBy" class="scanner-select">
+                            <option value="volatility_score">Sort: Volatility Score</option>
+                            <option value="volume_ratio">Sort: Volume Ratio</option>
+                            <option value="atr_pct">Sort: ATR %</option>
+                            <option value="price_range_pct">Sort: Price Range %</option>
+                        </select>
+                    </div>
+                    <div class="scanner-actions">
+                        <button class="scanner-scan-btn active-scan-btn" id="scanVolatileBtn" onclick="runVolatileScan(false)">
+                            🔍 Scan Now
+                        </button>
+                        <button class="scanner-refresh-btn" id="refreshVolatileBtn" onclick="runVolatileScan(true)" title="Force fresh scan">
+                            🔄
+                        </button>
+                    </div>
+                </div>
+                <div class="scanner-status" id="volatileStatus"></div>
+                <div class="volatile-results" id="volatileResults">
+                    <div class="scanner-empty">
+                        <p>Click <strong>"Scan Now"</strong> to find high volatility & volume stocks.</p>
+                        <p class="scanner-hint">Scans NIFTY 50 for stocks with unusual volatility, volume surges, and wide price ranges in the past month.</p>
+                    </div>
+                </div>
             </div>
-            <p class="disclaimer-footer">
-                ⚠️ AI-generated analysis for educational purposes only. Not financial advice.
-            </p>
+        </div>
+    </div>
+
+    <!-- ═══════════════════════════════════════════════════════════ -->
+    <!-- Detail Modal (for AI response full view) -->
+    <!-- ═══════════════════════════════════════════════════════════ -->
+    <div class="detail-modal-overlay" id="detailModal">
+        <div class="detail-modal">
+            <div class="modal-header">
+                <h3 id="modalTitle">Agent Details</h3>
+                <button class="modal-close" onclick="closeDetailModal()">✕</button>
+            </div>
+            <div class="modal-body" id="modalBody">
+                <!-- Full AI response rendered here -->
+            </div>
         </div>
     </div>
 

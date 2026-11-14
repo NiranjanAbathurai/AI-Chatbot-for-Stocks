@@ -52,6 +52,23 @@ app.include_router(watchlist.router)
 # ── Serve Frontend Static Files ─────────────────────────────────
 frontend_dir = Path(__file__).parent.parent / "frontend"
 if frontend_dir.exists():
+    # PWA manifest and service worker must be served from root scope
+    @app.get("/manifest.json")
+    async def serve_manifest():
+        """Serve PWA manifest from root path."""
+        return FileResponse(
+            str(frontend_dir / "manifest.json"),
+            media_type="application/manifest+json",
+        )
+
+    @app.get("/sw.js")
+    async def serve_service_worker():
+        """Serve service worker from root path (scope requirement)."""
+        return FileResponse(
+            str(frontend_dir / "sw.js"),
+            media_type="application/javascript",
+        )
+
     app.mount("/static", StaticFiles(directory=str(frontend_dir)), name="static")
 
     @app.get("/")
@@ -77,6 +94,8 @@ async def health_check():
         "status": "healthy",
         "ai_providers": ai_service.available_providers,
     }
+
+
 
 
 # ── Background Scheduler (Phase 3) ─────────────────────────────

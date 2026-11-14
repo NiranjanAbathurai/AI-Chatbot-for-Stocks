@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Stock Debate Chat — Swing & Options Trading</title>
+    <title>Stock Debate Chat — AI Trading Analysis</title>
     <link rel="stylesheet" href="/static/style.css">
     <!-- Markdown rendering -->
     <script src="https://cdn.jsdelivr.net/npm/marked/marked.min.js"></script>
@@ -14,7 +14,7 @@
         <header class="app-header">
             <div class="header-content">
                 <h1>📊 Stock Debate Chat</h1>
-                <p class="subtitle">AI-powered Swing & Options Trading Analysis for NSE Stocks</p>
+                <p class="subtitle">AI-powered Trading Analysis for NSE Stocks</p>
             </div>
             <div class="header-status" id="providerStatus">
                 <span class="status-dot"></span>
@@ -47,14 +47,14 @@
                 <div class="message system-message welcome">
                     <div class="message-content">
                         <h2>Welcome to Stock Debate Chat! 👋</h2>
-                        <p>Enter any NSE stock name below for a comprehensive <strong>swing & options trading</strong> analysis:</p>
+                        <p>Enter any NSE stock name below and select your analysis mode:</p>
                         <ul>
                             <li>📐 <strong>Technical Analysis</strong> — Support/Resistance, Fibonacci, Pivot Points, Moving Averages</li>
                             <li>📈 <strong>Chart Patterns</strong> — Double Top/Bottom, H&S, Triangles, Flags, Wedges</li>
                             <li>🔧 <strong>Swing Indicators</strong> — RSI, MACD, Bollinger Bands, ATR, Stochastic RSI, Volume</li>
                             <li>🐂 <strong>The Bull</strong> — Makes the bullish case with entry/SL/target levels</li>
-                            <li>🐻 <strong>The Bear</strong> — Makes the bearish case with downside risk levels</li>
-                            <li>⚖️ <strong>The Judge</strong> — Delivers final verdict with actionable trade setup & options strategy</li>
+                            <li>🐻 <strong>The Bear</strong> — Counters with bearish risks and downside levels</li>
+                            <li>⚖️ <strong>The Judge</strong> — Delivers final verdict with actionable trade setup</li>
                         </ul>
                         <p class="hint">Try: <span class="stock-hint" onclick="analyzeStock('Reliance')">Reliance</span>, 
                         <span class="stock-hint" onclick="analyzeStock('TCS')">TCS</span>, 
@@ -75,6 +75,12 @@
                     autocomplete="off"
                     maxlength="100"
                 >
+                <select id="analysisMode" class="analysis-mode-select">
+                    <option value="swing_trading">🔄 Swing Trading</option>
+                    <option value="option_trading">📊 Option Trading</option>
+                    <option value="short_term">⚡ Short Term</option>
+                    <option value="investment">🏦 Investment</option>
+                </select>
                 <button id="analyzeBtn" onclick="handleAnalyze()">
                     <span class="btn-text">Analyze</span>
                     <span class="btn-icon">🔍</span>

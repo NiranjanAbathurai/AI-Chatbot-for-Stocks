@@ -1,14 +1,61 @@
 """Pydantic request/response models for the Stock Debate Chat API."""
 
+from enum import Enum
 from pydantic import BaseModel, Field
 from typing import Optional
+
+
+# ── Analysis Mode Enum ──────────────────────────────────────────
+
+class AnalysisMode(str, Enum):
+    """Trading analysis mode that determines prompt focus."""
+    swing_trading = "swing_trading"
+    option_trading = "option_trading"
+    short_term = "short_term"
+    investment = "investment"
 
 
 # ── Request Models ──────────────────────────────────────────────
 
 class DebateRequest(BaseModel):
-    """Request body for the debate endpoint."""
+    """Request body for the legacy combined debate endpoint."""
     stock_name: str = Field(..., min_length=1, max_length=100, description="Stock name or ticker symbol")
+    analysis_mode: AnalysisMode = Field(default=AnalysisMode.swing_trading, description="Analysis mode")
+
+
+class StockDataRequest(BaseModel):
+    """Request body for the stock data fetch endpoint."""
+    stock_name: str = Field(..., min_length=1, max_length=100, description="Stock name or ticker symbol")
+
+
+class BullRequest(BaseModel):
+    """Request body for the bull analysis endpoint."""
+    ticker: str
+    stock_name: str
+    stock_data: dict
+    technical_data: dict = {}
+    analysis_mode: AnalysisMode = Field(default=AnalysisMode.swing_trading)
+
+
+class BearRequest(BaseModel):
+    """Request body for the bear analysis endpoint."""
+    ticker: str
+    stock_name: str
+    stock_data: dict
+    technical_data: dict = {}
+    analysis_mode: AnalysisMode = Field(default=AnalysisMode.swing_trading)
+    bull_argument: str = Field(..., description="The bull analyst's argument to counter")
+
+
+class JudgeRequest(BaseModel):
+    """Request body for the judge verdict endpoint."""
+    ticker: str
+    stock_name: str
+    stock_data: dict
+    technical_data: dict = {}
+    analysis_mode: AnalysisMode = Field(default=AnalysisMode.swing_trading)
+    bull_argument: str = Field(..., description="The bull analyst's argument")
+    bear_argument: str = Field(..., description="The bear analyst's argument")
 
 
 class WatchlistAddRequest(BaseModel):
@@ -46,12 +93,54 @@ class StockData(BaseModel):
     model_config = {"populate_by_name": True}
 
 
-# ── Agent Response Models ───────────────────────────────────────
+# ── Response Models ─────────────────────────────────────────────
+
+class StockDataResponse(BaseModel):
+    """Response from the stock data fetch endpoint."""
+    ticker: str
+    stock_name: str
+    stock_data: dict
+    technical_data: dict = {}
+
+
+class BullResponse(BaseModel):
+    """Response from the bull analysis endpoint."""
+    agent: str = "🐂 Bullish Analyst"
+    argument: str
+    provider: Optional[str] = None
+    providers_attempted: Optional[list[str]] = None
+    errors: Optional[dict[str, str]] = None
+
+
+class BearResponse(BaseModel):
+    """Response from the bear analysis endpoint."""
+    agent: str = "🐻 Bearish Analyst"
+    argument: str
+    provider: Optional[str] = None
+    providers_attempted: Optional[list[str]] = None
+    errors: Optional[dict[str, str]] = None
+
+
+class JudgeResponse(BaseModel):
+    """Response from the judge verdict endpoint."""
+    agent: str = "⚖️ Judge"
+    recommendation: str  # BUY / HOLD / AVOID
+    confidence: int = Field(..., ge=1, le=10)
+    analysis: str
+    provider: Optional[str] = None
+    providers_attempted: Optional[list[str]] = None
+    errors: Optional[dict[str, str]] = None
+
+
+# ── Agent Response Models (legacy compat) ───────────────────────
 
 class AgentArgument(BaseModel):
     """Response from a Bull or Bear agent."""
     agent: str
     argument: str
+    provider: Optional[str] = None
+    providers_attempted: Optional[list[str]] = None
+    errors: Optional[dict[str, str]] = None
 
 
 class VerdictResponse(BaseModel):
@@ -60,6 +149,9 @@ class VerdictResponse(BaseModel):
     recommendation: str  # BUY / HOLD / AVOID
     confidence: int = Field(..., ge=1, le=10)
     analysis: str
+    provider: Optional[str] = None
+    providers_attempted: Optional[list[str]] = None
+    errors: Optional[dict[str, str]] = None
 
 
 # ── Full Debate Response ────────────────────────────────────────

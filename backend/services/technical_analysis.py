@@ -106,6 +106,8 @@ def detect_chart_patterns(df: pd.DataFrame) -> list[dict]:
             lambda: _detect_asc_tri(high, low, close, n), lambda: _detect_desc_tri(high, low, close, n),
             lambda: _detect_bull_flag(close, n), lambda: _detect_bear_flag(close, n),
             lambda: _detect_rising_wedge(high, low, n), lambda: _detect_falling_wedge(high, low, n),
+            lambda: _detect_sideways_range(high, low, close, n),
+            lambda: _detect_symmetrical_triangle(high, low, close, n),
             lambda: _analyze_trend(close, n),
         ]
         for det in detectors:
@@ -242,6 +244,76 @@ def _detect_falling_wedge(high, low, n):
     except Exception:
         pass
     return None
+
+def _detect_sideways_range(high, low, close, n):
+    """Detect rectangular range / sideways consolidation pattern."""
+    lb = min(40, n)
+    seg_high = high[-lb:]
+    seg_low = low[-lb:]
+    seg_close = close[-lb:]
+    range_high = float(np.max(seg_high))
+    range_low = float(np.min(seg_low))
+    if range_low <= 0:
+        return None
+    range_pct = (range_high - range_low) / range_low * 100
+    # Sideways range: price contained within a narrow band (< 10%)
+    if range_pct > 12:
+        return None
+    # Check that price has touched both upper and lower zones multiple times
+    upper_zone = range_high - (range_high - range_low) * 0.25
+    lower_zone = range_low + (range_high - range_low) * 0.25
+    upper_touches = sum(1 for h in seg_high if h >= upper_zone)
+    lower_touches = sum(1 for l in seg_low if l <= lower_zone)
+    if upper_touches < 3 or lower_touches < 3:
+        return None
+    cur = float(seg_close[-1])
+    mid = (range_high + range_low) / 2
+    position = "near upper range" if cur > mid else "near lower range"
+    return {
+        "pattern": "Sideways Range",
+        "type": "sideways",
+        "reliability": "medium-high",
+        "description": f"Stock consolidating in ₹{range_low:.2f}–₹{range_high:.2f} range ({range_pct:.1f}% width). Currently {position}.",
+        "target": round(range_high, 2) if cur < mid else round(range_low, 2),
+        "implication": "Range-bound. Buy near support, sell near resistance, or wait for breakout."
+    }
+
+def _detect_symmetrical_triangle(high, low, close, n):
+    """Detect symmetrical triangle (converging highs and lows)."""
+    lb = min(50, n)
+    seg_high = high[-lb:]
+    seg_low = low[-lb:]
+    seg_close = close[-lb:]
+    # Find pivot highs and lows
+    df_tmp = pd.DataFrame({"High": seg_high, "Low": seg_low, "Close": seg_close})
+    pivot_highs, pivot_lows = _find_pivot_points(df_tmp, 3)
+    if len(pivot_highs) < 3 or len(pivot_lows) < 3:
+        return None
+    # Check descending highs
+    h1, h2, h3 = pivot_highs[-3][1], pivot_highs[-2][1], pivot_highs[-1][1]
+    if not (h1 > h2 > h3):
+        return None
+    # Check ascending lows
+    l1, l2, l3 = pivot_lows[-3][1], pivot_lows[-2][1], pivot_lows[-1][1]
+    if not (l1 < l2 < l3):
+        return None
+    # Verify convergence: the range is narrowing
+    initial_range = h1 - l1
+    current_range = h3 - l3
+    if initial_range <= 0 or current_range <= 0:
+        return None
+    if current_range / initial_range > 0.7:
+        return None  # Not converging enough
+    cur = float(seg_close[-1])
+    apex = (h3 + l3) / 2
+    return {
+        "pattern": "Symmetrical Triangle",
+        "type": "sideways",
+        "reliability": "medium-high",
+        "description": f"Converging highs ({h1:.2f}→{h3:.2f}) and lows ({l1:.2f}→{l3:.2f}). Apex near ₹{apex:.2f}.",
+        "target": round(h3 + initial_range * 0.618, 2),
+        "implication": "Breakout imminent. Direction uncertain — trade the breakout with volume confirmation."
+    }
 
 def _analyze_trend(close, n):
     if n < 50:

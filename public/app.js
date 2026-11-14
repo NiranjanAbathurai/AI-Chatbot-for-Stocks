@@ -1,15 +1,24 @@
 /**
  * Stock Debate Chat — Frontend Application
- * Handles API calls, message rendering, and UI interactions.
- * Enhanced with Technical Analysis display (S/R, Patterns, Swing Indicators).
+ * Sequential 3-call flow with progressive rendering.
+ * Calls: /api/stock-data → /api/debate/bull → /api/debate/bear → /api/debate/judge
  */
 
 const API_BASE = window.location.origin;
 const chatMessages = document.getElementById("chatMessages");
 const stockInput = document.getElementById("stockInput");
 const analyzeBtn = document.getElementById("analyzeBtn");
+const analysisMode = document.getElementById("analysisMode");
 
 let isAnalyzing = false;
+
+// Analysis mode labels for display
+const MODE_LABELS = {
+    swing_trading: "🔄 Swing Trading",
+    option_trading: "📊 Option Trading",
+    short_term: "⚡ Short Term",
+    investment: "🏦 Investment",
+};
 
 // ── Initialize ─────────────────────────────────────────────────
 document.addEventListener("DOMContentLoaded", () => {
@@ -62,104 +71,256 @@ async function analyzeStock(stockName) {
     if (isAnalyzing) return;
     isAnalyzing = true;
 
+    const mode = analysisMode ? analysisMode.value : "swing_trading";
+    const modeLabel = MODE_LABELS[mode] || mode;
+
+    // Update UI state
     stockInput.value = "";
     stockInput.disabled = true;
     analyzeBtn.disabled = true;
+    if (analysisMode) analysisMode.disabled = true;
 
-    addUserMessage(stockName);
-    const loadingId = addLoadingMessage();
+    // Add user message with mode
+    addUserMessage(stockName, modeLabel);
 
+    // ── Step 1: Fetch stock data ───────────────────────────────
+    const stepTracker = addStepTracker();
+    updateStep(stepTracker, 1, "active", "Fetching stock data...");
+
+    let stockData = null;
     try {
-        const res = await fetch(`${API_BASE}/api/debate`, {
+        const res = await fetch(`${API_BASE}/api/stock-data`, {
             method: "POST",
             headers: { "Content-Type": "application/json" },
             body: JSON.stringify({ stock_name: stockName }),
         });
 
-        removeMessage(loadingId);
-
         if (!res.ok) {
             const error = await res.json().catch(() => ({ detail: "Unknown error" }));
+            updateStep(stepTracker, 1, "error", "Stock data failed");
             addErrorMessage(error.detail || `Error ${res.status}`);
+            resetUI();
             return;
         }
 
-        const data = await res.json();
-        renderDebateResult(data);
+        stockData = await res.json();
+        updateStep(stepTracker, 1, "done", "Stock data loaded");
 
+        // Display stock data card + technical analysis
+        addStockDataMessage(stockData.stock_name, stockData.ticker, stockData.stock_data);
+        if (stockData.technical_data && Object.keys(stockData.technical_data).length > 0) {
+            addTechnicalAnalysisMessage(stockData.technical_data, stockData.stock_data.current_price);
+        }
     } catch (err) {
-        removeMessage(loadingId);
+        updateStep(stepTracker, 1, "error", "Connection failed");
         addErrorMessage("Could not connect to the server. Please try again.");
-        console.error("Debate API error:", err);
-    } finally {
-        isAnalyzing = false;
-        stockInput.disabled = false;
-        analyzeBtn.disabled = false;
-        stockInput.focus();
+        console.error("Stock data API error:", err);
+        resetUI();
+        return;
     }
+
+    // ── Step 2: Run Bull analysis ──────────────────────────────
+    updateStep(stepTracker, 2, "active", "🐂 Bull is analyzing...");
+    let bullResult = null;
+    try {
+        const res = await fetch(`${API_BASE}/api/debate/bull`, {
+            method: "POST",
+            headers: { "Content-Type": "application/json" },
+            body: JSON.stringify({
+                ticker: stockData.ticker,
+                stock_name: stockData.stock_name,
+                stock_data: stockData.stock_data,
+                technical_data: stockData.technical_data,
+                analysis_mode: mode,
+            }),
+        });
+
+        if (!res.ok) {
+            const error = await res.json().catch(() => ({ detail: "Bull analysis failed" }));
+            updateStep(stepTracker, 2, "error", "Bull failed");
+            addAgentErrorMessage("bull", "🐂 Bullish Analyst", error.detail || "Bull analysis failed");
+            bullResult = { argument: "⚠️ Bull analysis unavailable.", provider: "none", providers_attempted: [], errors: {} };
+        } else {
+            bullResult = await res.json();
+            updateStep(stepTracker, 2, "done", "Bull complete");
+            addAgentMessage("bull", bullResult.agent, bullResult.argument, {
+                provider: bullResult.provider,
+                providers_attempted: bullResult.providers_attempted,
+                errors: bullResult.errors,
+            });
+        }
+    } catch (err) {
+        updateStep(stepTracker, 2, "error", "Bull connection failed");
+        addAgentErrorMessage("bull", "🐂 Bullish Analyst", "Could not connect for bull analysis.");
+        bullResult = { argument: "⚠️ Bull analysis unavailable.", provider: "none", providers_attempted: [], errors: {} };
+        console.error("Bull API error:", err);
+    }
+
+    // ── Step 3: Run Bear analysis ──────────────────────────────
+    updateStep(stepTracker, 3, "active", "🐻 Bear is countering...");
+    let bearResult = null;
+    try {
+        const res = await fetch(`${API_BASE}/api/debate/bear`, {
+            method: "POST",
+            headers: { "Content-Type": "application/json" },
+            body: JSON.stringify({
+                ticker: stockData.ticker,
+                stock_name: stockData.stock_name,
+                stock_data: stockData.stock_data,
+                technical_data: stockData.technical_data,
+                analysis_mode: mode,
+                bull_argument: bullResult.argument,
+            }),
+        });
+
+        if (!res.ok) {
+            const error = await res.json().catch(() => ({ detail: "Bear analysis failed" }));
+            updateStep(stepTracker, 3, "error", "Bear failed");
+            addAgentErrorMessage("bear", "🐻 Bearish Analyst", error.detail || "Bear analysis failed");
+            bearResult = { argument: "⚠️ Bear analysis unavailable.", provider: "none", providers_attempted: [], errors: {} };
+        } else {
+            bearResult = await res.json();
+            updateStep(stepTracker, 3, "done", "Bear complete");
+            addAgentMessage("bear", bearResult.agent, bearResult.argument, {
+                provider: bearResult.provider,
+                providers_attempted: bearResult.providers_attempted,
+                errors: bearResult.errors,
+            });
+        }
+    } catch (err) {
+        updateStep(stepTracker, 3, "error", "Bear connection failed");
+        addAgentErrorMessage("bear", "🐻 Bearish Analyst", "Could not connect for bear analysis.");
+        bearResult = { argument: "⚠️ Bear analysis unavailable.", provider: "none", providers_attempted: [], errors: {} };
+        console.error("Bear API error:", err);
+    }
+
+    // ── Step 4: Run Judge verdict ──────────────────────────────
+    updateStep(stepTracker, 4, "active", "⚖️ Judge is deliberating...");
+    try {
+        const res = await fetch(`${API_BASE}/api/debate/judge`, {
+            method: "POST",
+            headers: { "Content-Type": "application/json" },
+            body: JSON.stringify({
+                ticker: stockData.ticker,
+                stock_name: stockData.stock_name,
+                stock_data: stockData.stock_data,
+                technical_data: stockData.technical_data,
+                analysis_mode: mode,
+                bull_argument: bullResult.argument,
+                bear_argument: bearResult.argument,
+            }),
+        });
+
+        if (!res.ok) {
+            const error = await res.json().catch(() => ({ detail: "Judge verdict failed" }));
+            updateStep(stepTracker, 4, "error", "Judge failed");
+            addAgentErrorMessage("judge", "⚖️ Judge", error.detail || "Judge verdict failed");
+        } else {
+            const judgeResult = await res.json();
+            updateStep(stepTracker, 4, "done", "Verdict delivered");
+            addJudgeMessage(judgeResult);
+        }
+    } catch (err) {
+        updateStep(stepTracker, 4, "error", "Judge connection failed");
+        addAgentErrorMessage("judge", "⚖️ Judge", "Could not connect for judge verdict.");
+        console.error("Judge API error:", err);
+    }
+
+    // ── Disclaimer ─────────────────────────────────────────────
+    addDisclaimerMessage(
+        "⚠️ This is AI-generated analysis for educational purposes only. " +
+        "This is NOT financial advice. Always do your own research and consult " +
+        "a SEBI-registered financial advisor before making investment decisions."
+    );
+
+    // Remove step tracker after completion
+    setTimeout(() => {
+        if (stepTracker && stepTracker.parentNode) {
+            stepTracker.classList.add("step-tracker-done");
+        }
+    }, 1000);
+
+    resetUI();
 }
 
-// ── Render Debate Result ───────────────────────────────────────
-function renderDebateResult(data) {
-    // 1. Stock data card
-    addStockDataMessage(data.stock_name, data.ticker, data.stock_data);
+function resetUI() {
+    isAnalyzing = false;
+    stockInput.disabled = false;
+    analyzeBtn.disabled = false;
+    if (analysisMode) analysisMode.disabled = false;
+    stockInput.focus();
+}
 
-    // 2. Technical Analysis card (S/R, Patterns, Indicators)
-    setTimeout(() => {
-        if (data.technical_data && Object.keys(data.technical_data).length > 0) {
-            addTechnicalAnalysisMessage(data.technical_data, data.stock_data.current_price);
-        }
-    }, 150);
+// ── Step Tracker ───────────────────────────────────────────────
 
-    // 3. Bull argument
-    setTimeout(() => {
-        addAgentMessage("bull", data.bullish.agent, data.bullish.argument);
-    }, 300);
+function addStepTracker() {
+    const tracker = document.createElement("div");
+    tracker.className = "message step-tracker";
+    tracker.innerHTML = `
+        <div class="step-tracker-title">Analysis Progress</div>
+        <div class="steps">
+            <div class="step" data-step="1">
+                <span class="step-icon">⏳</span>
+                <span class="step-label">Stock Data</span>
+            </div>
+            <div class="step" data-step="2">
+                <span class="step-icon">⏳</span>
+                <span class="step-label">Bull Analysis</span>
+            </div>
+            <div class="step" data-step="3">
+                <span class="step-icon">⏳</span>
+                <span class="step-label">Bear Analysis</span>
+            </div>
+            <div class="step" data-step="4">
+                <span class="step-icon">⏳</span>
+                <span class="step-label">Judge Verdict</span>
+            </div>
+        </div>
+    `;
+    chatMessages.appendChild(tracker);
+    scrollToBottom();
+    return tracker;
+}
 
-    // 4. Bear argument
-    setTimeout(() => {
-        addAgentMessage("bear", data.bearish.agent, data.bearish.argument);
-    }, 500);
+function updateStep(tracker, stepNum, status, label) {
+    if (!tracker) return;
+    const step = tracker.querySelector(`[data-step="${stepNum}"]`);
+    if (!step) return;
 
-    // 5. Judge verdict
-    setTimeout(() => {
-        addJudgeMessage(data.verdict);
-    }, 700);
+    const icon = step.querySelector(".step-icon");
+    const labelEl = step.querySelector(".step-label");
 
-    // 6. Disclaimer
-    setTimeout(() => {
-        addDisclaimerMessage(data.disclaimer);
-    }, 900);
+    step.className = `step step-${status}`;
+
+    if (status === "active") {
+        icon.textContent = "⏳";
+        step.classList.add("step-pulse");
+    } else if (status === "done") {
+        icon.textContent = "✅";
+        step.classList.remove("step-pulse");
+    } else if (status === "error") {
+        icon.textContent = "❌";
+        step.classList.remove("step-pulse");
+    }
+
+    if (label) labelEl.textContent = label;
+    scrollToBottom();
 }
 
 // ── Message Builders ───────────────────────────────────────────
 
-function addUserMessage(text) {
+function addUserMessage(text, modeLabel) {
     const msg = document.createElement("div");
     msg.className = "message user-message";
     msg.innerHTML = `
         <div class="message-label">You</div>
-        <div class="message-body">Analyze <strong>${escapeHtml(text)}</strong></div>
-    `;
-    chatMessages.appendChild(msg);
-    scrollToBottom();
-}
-
-function addLoadingMessage() {
-    const id = "loading-" + Date.now();
-    const msg = document.createElement("div");
-    msg.className = "message loading-message";
-    msg.id = id;
-    msg.innerHTML = `
-        <div class="loading-text">🤖 AI agents are analyzing...</div>
-        <div class="loading-stage">Fetching data → Computing S/R & Patterns → Running Bull & Bear → Awaiting verdict</div>
-        <div class="loading-dots">
-            <span></span><span></span><span></span>
+        <div class="message-body">
+            Analyze <strong>${escapeHtml(text)}</strong>
+            <span class="mode-badge">${escapeHtml(modeLabel)}</span>
         </div>
     `;
     chatMessages.appendChild(msg);
     scrollToBottom();
-    return id;
 }
 
 function removeMessage(id) {
@@ -173,6 +334,17 @@ function addErrorMessage(text) {
     msg.innerHTML = `
         <div class="error-icon">❌</div>
         <div class="error-text">${escapeHtml(text)}</div>
+    `;
+    chatMessages.appendChild(msg);
+    scrollToBottom();
+}
+
+function addAgentErrorMessage(type, agent, errorText) {
+    const msg = document.createElement("div");
+    msg.className = `message ${type}-message agent-error`;
+    msg.innerHTML = `
+        <div class="agent-label">${escapeHtml(agent)} <span class="provider-badge provider-failed"><span class="provider-icon">✗</span><span class="provider-name">failed</span></span></div>
+        <div class="message-body"><p class="error-text">⚠️ ${escapeHtml(errorText)}</p></div>
     `;
     chatMessages.appendChild(msg);
     scrollToBottom();
@@ -383,7 +555,6 @@ function addTechnicalAnalysisMessage(techData, currentPrice) {
             <h4>🔧 Swing Trading Indicators</h4>
             <div class="swing-grid">`;
 
-        // Swing Score
         if (swing.swing_score !== undefined) {
             const scoreColor = swing.swing_score >= 60 ? "var(--accent-green)" : swing.swing_score <= 40 ? "var(--accent-red)" : "var(--accent-gold)";
             html += `<div class="swing-score-card">
@@ -393,7 +564,6 @@ function addTechnicalAnalysisMessage(techData, currentPrice) {
             </div>`;
         }
 
-        // Indicator items
         const indicators = [
             { key: "rsi_14", label: "RSI (14)", signal: swing.rsi_signal },
             { key: "macd", label: "MACD", signal: swing.macd_trend, extra: swing.macd_crossover },
@@ -417,7 +587,6 @@ function addTechnicalAnalysisMessage(techData, currentPrice) {
             }
         });
 
-        // ATR-based levels
         if (swing.suggested_sl && swing.suggested_target) {
             html += `<div class="swing-atr-levels">
                 <div class="atr-level atr-sl">SL: ₹${swing.suggested_sl.toFixed(2)}</div>
@@ -433,12 +602,13 @@ function addTechnicalAnalysisMessage(techData, currentPrice) {
     scrollToBottom();
 }
 
-function addAgentMessage(type, agent, argument) {
+function addAgentMessage(type, agent, argument, providerInfo) {
     const msg = document.createElement("div");
     msg.className = `message ${type}-message`;
     const renderedMarkdown = renderMarkdown(argument);
+    const providerBadge = buildProviderBadge(providerInfo);
     msg.innerHTML = `
-        <div class="agent-label">${escapeHtml(agent)}</div>
+        <div class="agent-label">${escapeHtml(agent)}${providerBadge}</div>
         <div class="message-body">${renderedMarkdown}</div>
     `;
     chatMessages.appendChild(msg);
@@ -460,11 +630,17 @@ function addJudgeMessage(verdict) {
     else fillColor = "var(--accent-red)";
 
     const renderedAnalysis = renderMarkdown(verdict.analysis);
+    const providerBadge = buildProviderBadge({
+        provider: verdict.provider,
+        providers_attempted: verdict.providers_attempted,
+        errors: verdict.errors,
+    });
 
     msg.innerHTML = `
         <div class="agent-label">
             ${escapeHtml(verdict.agent)}
             <span class="verdict-badge ${badgeClass}">${rec}</span>
+            ${providerBadge}
         </div>
         <div class="confidence-bar">
             <span>Confidence:</span>
@@ -485,6 +661,46 @@ function addDisclaimerMessage(text) {
     msg.textContent = text;
     chatMessages.appendChild(msg);
     scrollToBottom();
+}
+
+// ── Provider Badge Builder ─────────────────────────────────────
+
+function buildProviderBadge(providerInfo) {
+    if (!providerInfo) return "";
+
+    const provider = providerInfo.provider || "none";
+    const attempted = providerInfo.providers_attempted || [];
+    const errors = providerInfo.errors || {};
+
+    const isSuccess = provider !== "none";
+    const badgeClass = isSuccess ? "provider-success" : "provider-failed";
+    const icon = isSuccess ? "✓" : "✗";
+    const label = isSuccess ? provider : "all failed";
+
+    // Build tooltip with attempt details
+    let tooltipLines = [];
+    if (attempted.length > 0) {
+        tooltipLines.push(`Attempted: ${attempted.join(" → ")}`);
+    }
+    if (isSuccess) {
+        tooltipLines.push(`Responded: ${provider}`);
+    }
+    const errorEntries = Object.entries(errors);
+    if (errorEntries.length > 0) {
+        tooltipLines.push("---");
+        for (const [prov, errMsg] of errorEntries) {
+            const shortErr = errMsg.length > 80 ? errMsg.substring(0, 80) + "…" : errMsg;
+            tooltipLines.push(`${prov}: ${shortErr}`);
+        }
+    }
+
+    const tooltip = escapeHtml(tooltipLines.join("\n"));
+
+    return `<span class="provider-badge ${badgeClass}" title="${tooltip}">
+        <span class="provider-icon">${icon}</span>
+        <span class="provider-name">${escapeHtml(label)}</span>
+        ${!isSuccess && attempted.length > 0 ? `<span class="provider-tried">(tried: ${escapeHtml(attempted.join(", "))})</span>` : ""}
+    </span>`;
 }
 
 // ── Utilities ──────────────────────────────────────────────────

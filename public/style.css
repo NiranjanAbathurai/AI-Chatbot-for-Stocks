@@ -812,6 +812,48 @@ body {
     color: var(--accent-gold);
 }
 
+/* Provider badge */
+.provider-badge {
+    display: inline-flex;
+    align-items: center;
+    gap: 4px;
+    padding: 2px 10px;
+    border-radius: 12px;
+    font-size: 0.65rem;
+    font-weight: 600;
+    margin-left: 8px;
+    vertical-align: middle;
+    cursor: help;
+    white-space: nowrap;
+}
+
+.provider-badge.provider-success {
+    background: rgba(0, 210, 106, 0.15);
+    color: var(--accent-green);
+    border: 1px solid rgba(0, 210, 106, 0.3);
+}
+
+.provider-badge.provider-failed {
+    background: rgba(255, 71, 87, 0.15);
+    color: var(--accent-red);
+    border: 1px solid rgba(255, 71, 87, 0.3);
+}
+
+.provider-icon {
+    font-size: 0.7rem;
+    font-weight: 800;
+}
+
+.provider-name {
+    text-transform: capitalize;
+}
+
+.provider-tried {
+    font-size: 0.6rem;
+    color: var(--text-muted);
+    font-weight: 400;
+}
+
 /* Verdict badge */
 .verdict-badge {
     display: inline-block;
@@ -1040,6 +1082,42 @@ body {
     cursor: not-allowed;
 }
 
+/* Analysis Mode Dropdown */
+.analysis-mode-select {
+    padding: 10px 14px;
+    background: var(--input-bg);
+    border: 1px solid var(--input-border);
+    border-radius: var(--border-radius);
+    color: var(--text-primary);
+    font-size: 0.85rem;
+    outline: none;
+    cursor: pointer;
+    transition: border-color 0.2s;
+    appearance: none;
+    -webkit-appearance: none;
+    -moz-appearance: none;
+    background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='12' height='12' viewBox='0 0 12 12'%3E%3Cpath fill='%239898b0' d='M6 8L1 3h10z'/%3E%3C/svg%3E");
+    background-repeat: no-repeat;
+    background-position: right 10px center;
+    padding-right: 30px;
+    min-width: 160px;
+}
+
+.analysis-mode-select:focus {
+    border-color: var(--accent-blue);
+}
+
+.analysis-mode-select:disabled {
+    opacity: 0.5;
+    cursor: not-allowed;
+}
+
+.analysis-mode-select option {
+    background: var(--bg-secondary);
+    color: var(--text-primary);
+    padding: 8px;
+}
+
 #analyzeBtn {
     padding: 14px 24px;
     background: var(--accent-blue);
@@ -1077,6 +1155,117 @@ body {
     font-size: 0.7rem;
     color: var(--text-muted);
     margin-top: 8px;
+}
+
+/* ── Mode Badge (in user message) ─────────────────────────── */
+.mode-badge {
+    display: inline-block;
+    padding: 2px 10px;
+    border-radius: 10px;
+    font-size: 0.7rem;
+    font-weight: 600;
+    background: var(--bg-tertiary);
+    color: var(--accent-cyan);
+    margin-left: 8px;
+    vertical-align: middle;
+}
+
+/* ── Step Tracker ─────────────────────────────────────────── */
+.step-tracker {
+    align-self: center;
+    background: var(--bg-secondary);
+    border-color: var(--bg-tertiary);
+    max-width: 95%;
+    width: 100%;
+    padding: 16px 20px;
+    transition: opacity 0.5s ease;
+}
+
+.step-tracker-done {
+    opacity: 0.5;
+}
+
+.step-tracker-title {
+    font-size: 0.8rem;
+    font-weight: 700;
+    color: var(--text-secondary);
+    margin-bottom: 12px;
+    text-align: center;
+}
+
+.steps {
+    display: flex;
+    justify-content: space-between;
+    gap: 8px;
+}
+
+.step {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    gap: 4px;
+    flex: 1;
+    padding: 8px 4px;
+    border-radius: 8px;
+    background: var(--bg-tertiary);
+    transition: all 0.3s ease;
+}
+
+.step-icon {
+    font-size: 1.1rem;
+}
+
+.step-label {
+    font-size: 0.65rem;
+    color: var(--text-muted);
+    text-align: center;
+    font-weight: 600;
+}
+
+.step-active {
+    background: rgba(55, 66, 250, 0.15);
+    border: 1px solid rgba(55, 66, 250, 0.3);
+}
+
+.step-active .step-label {
+    color: var(--accent-blue);
+}
+
+.step-done {
+    background: rgba(0, 210, 106, 0.1);
+    border: 1px solid rgba(0, 210, 106, 0.2);
+}
+
+.step-done .step-label {
+    color: var(--accent-green);
+}
+
+.step-error {
+    background: rgba(255, 71, 87, 0.1);
+    border: 1px solid rgba(255, 71, 87, 0.2);
+}
+
+.step-error .step-label {
+    color: var(--accent-red);
+}
+
+.step-pulse {
+    animation: stepPulse 1.5s infinite ease-in-out;
+}
+
+@keyframes stepPulse {
+    0%, 100% { opacity: 1; }
+    50% { opacity: 0.6; }
+}
+
+/* Agent error message */
+.agent-error {
+    opacity: 0.7;
+}
+
+.agent-error .error-text {
+    color: var(--accent-red);
+    font-size: 0.85rem;
 }
 
 /* ── Scrollbar ────────────────────────────────────────────── */
@@ -1117,6 +1306,17 @@ body {
 
     .input-area {
         padding: 12px 16px;
+    }
+
+    .input-container {
+        flex-wrap: wrap;
+    }
+
+    .analysis-mode-select {
+        min-width: 0;
+        flex: 1;
+        font-size: 0.8rem;
+        padding: 10px 28px 10px 10px;
     }
 
     .message {
@@ -1161,11 +1361,40 @@ body {
     #analyzeBtn .btn-text {
         display: none;
     }
+
+    .steps {
+        gap: 4px;
+    }
+
+    .step {
+        padding: 6px 2px;
+    }
+
+    .step-label {
+        font-size: 0.55rem;
+    }
+
+    .step-icon {
+        font-size: 0.9rem;
+    }
 }
 
 @media (max-width: 480px) {
     .stock-data-grid {
         grid-template-columns: 1fr;
+    }
+
+    .input-container {
+        flex-wrap: wrap;
+    }
+
+    #stockInput {
+        width: 100%;
+        flex: 1 1 100%;
+    }
+
+    .analysis-mode-select {
+        flex: 1;
     }
 
     .sr-level {
@@ -1178,5 +1407,13 @@ body {
 
     .swing-atr-levels {
         flex-direction: column;
+    }
+
+    .steps {
+        flex-wrap: wrap;
+    }
+
+    .step {
+        min-width: 60px;
     }
 }
