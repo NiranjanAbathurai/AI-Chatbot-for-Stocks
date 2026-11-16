@@ -9,12 +9,23 @@
  *   getAvailableProviders()              → string[]
  */
 
+import Anthropic from "@anthropic-ai/sdk";
 import { GoogleGenAI } from "@google/genai";
 import Groq from "groq-sdk";
 import OpenAI from "openai";
 
+// ── SSL Fix for corporate proxies ──────────────────────────────
+// Corporate proxies (Zscaler) inject self-signed certificates.
+// This disables strict TLS verification for local/dev environments.
+if (!process.env.NODE_TLS_REJECT_UNAUTHORIZED) {
+  process.env.NODE_TLS_REJECT_UNAUTHORIZED = "0";
+}
+
 // ── Configuration ──────────────────────────────────────────────
 
+const ANTHROPIC_API_KEY = process.env.ANTHROPIC_API_KEY || "";
+const ANTHROPIC_AUTH_TOKEN = process.env.ANTHROPIC_AUTH_TOKEN || "";
+const ANTHROPIC_BASE_URL = process.env.ANTHROPIC_BASE_URL || "";
 const GEMINI_API_KEY = process.env.GEMINI_API_KEY || "";
 const GROQ_API_KEY = process.env.GROQ_API_KEY || "";
 const OPENAI_API_KEY = process.env.OPENAI_API_KEY || "";
@@ -29,6 +40,31 @@ const AI_PROVIDER_PRIORITY = (
 const AI_CALL_TIMEOUT = parseInt(process.env.AI_CALL_TIMEOUT || "60", 10) * 1000; // ms
 
 // ── Model fallback lists (newest → oldest) ─────────────────────
+
+// Gateway models (corporate API gateways use simplified names without date suffixes)
+const ANTHROPIC_GATEWAY_MODELS = [
+  "claude-4.5-sonnet",
+  "claude-4.5-haiku",
+  "claude-4.6-sonnet",
+  "claude-5-sonnet",
+];
+
+// Direct Anthropic API models (standard names with date suffixes)
+const ANTHROPIC_DIRECT_MODELS = [
+  "claude-sonnet-4-20250514",
+  "claude-haiku-4-20250414",
+  "claude-3-5-sonnet-20241022",
+  "claude-3-5-haiku-20241022",
+  "claude-3-haiku-20240307",
+];
+
+const ANTHROPIC_IS_GATEWAY = Boolean(
+  ANTHROPIC_BASE_URL && !ANTHROPIC_BASE_URL.includes("anthropic.com")
+);
+
+const ANTHROPIC_FALLBACK_MODELS = ANTHROPIC_IS_GATEWAY
+  ? ANTHROPIC_GATEWAY_MODELS
+  : ANTHROPIC_DIRECT_MODELS;
 
 const GEMINI_FALLBACK_MODELS = [
   "gemini-2.0-flash",
@@ -71,12 +107,67 @@ function buildModelList(fallbackModels, envVar) {
  */
 function isModelNotFound(err) {
   const msg = (err.message || String(err)).toLowerCase();
-  return ["not found", "not exist", "deprecated", "decommissioned", "unavailable", "invalid model"].some(
+  return ["not found", "not exist", "deprecated", "decommissioned", "unavailable", "invalid model", "invalid_request_error"].some(
     (kw) => msg.includes(kw)
-  );
+  ) || (err.status === 400 || err.status === 404);
 }
 
 // ── Provider implementations ───────────────────────────────────
+
+async function callAnthropic(systemPrompt, userPrompt) {
+  if (!ANTHROPIC_API_KEY && !ANTHROPIC_AUTH_TOKEN) {
+    throw new Error("Anthropic API key not configured");
+  }
+
+  // Corporate gateways use ANTHROPIC_AUTH_TOKEN; direct API uses ANTHROPIC_API_KEY.
+  // The SDK auto-detects ANTHROPIC_AUTH_TOKEN from env, but we pass it explicitly
+  // to ensure it works in all environments.
+  const clientOpts = {};
+  if (ANTHROPIC_BASE_URL) {
+    clientOpts.baseURL = ANTHROPIC_BASE_URL;
+    console.log(`Anthropic: using base URL '${ANTHROPIC_BASE_URL}'`);
+  }
+  if (ANTHROPIC_IS_GATEWAY && ANTHROPIC_AUTH_TOKEN) {
+    clientOpts.authToken = ANTHROPIC_AUTH_TOKEN;
+    console.log("Anthropic: using auth token for corporate gateway");
+  } else {
+    clientOpts.apiKey = ANTHROPIC_API_KEY;
+  }
+  const client = new Anthropic(clientOpts);
+  const models = buildModelList(ANTHROPIC_FALLBACK_MODELS, "ANTHROPIC_MODEL");
+
+  for (let i = 0; i < models.length; i++) {
+    const model = models[i];
+    try {
+      console.log(`Anthropic: trying model '${model}'`);
+      const response = await client.messages.create({
+        model,
+        max_tokens: 2048,
+        system: systemPrompt,
+        messages: [{ role: "user", content: userPrompt }],
+      });
+
+      // Extract text from content blocks
+      let content = "";
+      for (const block of response.content) {
+        if (block.type === "text") content += block.text;
+      }
+
+      if (content) {
+        console.log(`Anthropic: success with model '${model}'`);
+        return content;
+      }
+      throw new Error("Anthropic returned empty response");
+    } catch (err) {
+      if (isModelNotFound(err) && i < models.length - 1) {
+        console.warn(`Anthropic: model '${model}' unavailable (${err.message}) — trying next...`);
+        continue;
+      }
+      throw err;
+    }
+  }
+  throw new Error("Anthropic: all fallback models exhausted");
+}
 
 async function callGemini(systemPrompt, userPrompt) {
   if (!GEMINI_API_KEY) throw new Error("Gemini API key not configured");
@@ -192,6 +283,7 @@ async function callOpenAI(systemPrompt, userPrompt) {
 // ── Provider registry ──────────────────────────────────────────
 
 const PROVIDERS = {
+  anthropic: { call: callAnthropic, available: Boolean(ANTHROPIC_API_KEY || ANTHROPIC_AUTH_TOKEN) },
   gemini: { call: callGemini, available: Boolean(GEMINI_API_KEY) },
   groq: { call: callGroq, available: Boolean(GROQ_API_KEY) },
   openai: { call: callOpenAI, available: Boolean(OPENAI_API_KEY) },
@@ -236,7 +328,7 @@ export async function generateAI(systemPrompt, userPrompt) {
 
   if (available.length === 0) {
     throw new Error(
-      "No AI providers available. Set at least one API key (GEMINI_API_KEY or GROQ_API_KEY) in environment variables."
+      "No AI providers available. Set at least one API key (ANTHROPIC_API_KEY, GEMINI_API_KEY, or GROQ_API_KEY) in environment variables."
     );
   }
 
