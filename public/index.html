@@ -4,14 +4,14 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover, user-scalable=no">
     <title>Stock Debate Chat — AI Trading Analysis</title>
-    <link rel="stylesheet" href="/style.css">
+    <link rel="stylesheet" href="/static/style.css">
     <!-- PWA Support -->
     <link rel="manifest" href="/manifest.json">
     <meta name="theme-color" content="#0f0f14">
     <meta name="apple-mobile-web-app-capable" content="yes">
     <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
     <meta name="apple-mobile-web-app-title" content="StockChat">
-    <link rel="apple-touch-icon" href="/icons/icon-192.png">
+    <link rel="apple-touch-icon" href="/static/icons/icon-192.png">
     <meta name="description" content="AI-powered stock analysis with Bull, Bear, and Judge agents for NSE stocks">
     <!-- Markdown rendering -->
     <script src="https://cdn.jsdelivr.net/npm/marked/marked.min.js"></script>
@@ -35,6 +35,7 @@
         <!-- Tab Navigation -->
         <nav class="tab-nav">
             <button class="tab-btn active" data-tab="pattern-scanner" onclick="switchTab('pattern-scanner')">📐 Pattern Scanner</button>
+            <button class="tab-btn" data-tab="developing-patterns" onclick="switchTab('developing-patterns')">🔬 Developing Patterns</button>
             <button class="tab-btn" data-tab="stock-analyzer" onclick="switchTab('stock-analyzer')">📊 Stock Analyzer</button>
             <button class="tab-btn" data-tab="active-trading" onclick="switchTab('active-trading')">📈 Active Trading</button>
         </nav>
@@ -71,6 +72,73 @@
                     <div class="scanner-empty">
                         <p>Click <strong>"Scan Now"</strong> to find stocks with active chart patterns.</p>
                         <p class="scanner-hint">Scans NIFTY 50 stocks for Double Top/Bottom, H&S, Triangles, Flags, Wedges & more.</p>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <!-- ═══════════════════════════════════════════════════════ -->
+        <!-- Tab: Developing Patterns (Early Pattern Detection) -->
+        <!-- ═══════════════════════════════════════════════════════ -->
+        <div class="tab-content hidden" id="developingPatternsTab">
+            <div class="developing-patterns-tab-content">
+                <div class="scanner-header">
+                    <h3>🔬 Developing Pattern Scanner</h3>
+                    <p class="scanner-subtitle">Detect chart patterns before confirmation — early pattern detection for NIFTY 50</p>
+                </div>
+                <div class="scanner-controls">
+                    <div class="scanner-filters">
+                        <select id="devPatternTypeFilter" class="scanner-select">
+                            <option value="">All Types</option>
+                            <option value="bullish">🟢 Bullish</option>
+                            <option value="bearish">🔴 Bearish</option>
+                            <option value="neutral">🟡 Neutral</option>
+                        </select>
+                        <select id="devPatternNameFilter" class="scanner-select">
+                            <option value="">All Patterns</option>
+                            <option value="Inverse Head">Inverse H&S</option>
+                            <option value="Head & Shoulders">Head & Shoulders</option>
+                            <option value="Double Top">Double Top</option>
+                            <option value="Double Bottom">Double Bottom</option>
+                            <option value="Ascending Triangle">Ascending Triangle</option>
+                            <option value="Descending Triangle">Descending Triangle</option>
+                            <option value="Symmetrical Triangle">Symmetrical Triangle</option>
+                            <option value="Rising Wedge">Rising Wedge</option>
+                            <option value="Falling Wedge">Falling Wedge</option>
+                            <option value="Bullish Flag">Bullish Flag</option>
+                            <option value="Bearish Flag">Bearish Flag</option>
+                            <option value="Cup and Handle">Cup & Handle</option>
+                        </select>
+                        <select id="devStageFilter" class="scanner-select">
+                            <option value="">All Stages</option>
+                            <option value="Stage 1">Stage 1 – Early</option>
+                            <option value="Stage 2">Stage 2 – Developing</option>
+                            <option value="Stage 3">Stage 3 – Almost Complete</option>
+                            <option value="Stage 4">Stage 4 – Breakout Pending</option>
+                            <option value="Stage 5">Stage 5 – Confirmed</option>
+                        </select>
+                        <select id="devTimeframeFilter" class="scanner-select">
+                            <option value="1d">📅 Daily</option>
+                            <option value="1h">⏰ 1 Hour</option>
+                            <option value="15m">⚡ 15 Min</option>
+                        </select>
+                        <input type="number" id="devMinConfidence" class="scanner-select" placeholder="Min Confidence" min="0" max="100" step="5" style="width:110px;">
+                    </div>
+                    <div class="scanner-actions">
+                        <button class="scanner-scan-btn dev-scan-btn" id="scanDevPatternsBtn" onclick="runDevPatternScan(false)">
+                            🔍 Scan Now
+                        </button>
+                        <button class="scanner-refresh-btn" id="refreshDevPatternsBtn" onclick="runDevPatternScan(true)" title="Force fresh scan">
+                            🔄
+                        </button>
+                    </div>
+                </div>
+                <div class="scanner-status" id="devPatternStatus"></div>
+                <div class="dev-pattern-results" id="devPatternResults">
+                    <div class="scanner-empty">
+                        <p>Click <strong>"Scan Now"</strong> to detect developing chart patterns.</p>
+                        <p class="scanner-hint">Identifies patterns at all stages: Early Formation → Developing → Almost Complete → Breakout Pending → Confirmed.</p>
+                        <p class="scanner-hint">Includes confidence scores, key levels, targets, and invalidation prices.</p>
                     </div>
                 </div>
             </div>
@@ -202,6 +270,6 @@
         </div>
     </div>
 
-    <script src="/app.js"></script>
+    <script src="/static/app.js"></script>
 </body>
 </html>

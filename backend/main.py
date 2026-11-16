@@ -12,7 +12,7 @@ from fastapi.staticfiles import StaticFiles
 from fastapi.responses import FileResponse
 
 from config import settings
-from routers import debate, screener, alerts, watchlist
+from routers import debate, screener, alerts, watchlist, developing_patterns
 
 # ── Logging Setup ───────────────────────────────────────────────
 logging.basicConfig(
@@ -48,6 +48,9 @@ app.include_router(screener.router)
 # Phase 3: Alerts & Watchlist
 app.include_router(alerts.router)
 app.include_router(watchlist.router)
+
+# Phase 4: Developing Pattern Scanner
+app.include_router(developing_patterns.router)
 
 # ── Serve Frontend Static Files ─────────────────────────────────
 frontend_dir = Path(__file__).parent.parent / "frontend"

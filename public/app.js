@@ -42,6 +42,7 @@ function switchTab(tabId) {
     activeTab = tabId;
     document.querySelectorAll(".tab-btn").forEach(b => b.classList.toggle("active", b.dataset.tab === tabId));
     document.getElementById("patternScannerTab").classList.toggle("hidden", tabId !== "pattern-scanner");
+    document.getElementById("developingPatternsTab").classList.toggle("hidden", tabId !== "developing-patterns");
     document.getElementById("stockAnalyzerTab").classList.toggle("hidden", tabId !== "stock-analyzer");
     document.getElementById("activeTradingTab").classList.toggle("hidden", tabId !== "active-trading");
     if (tabId === "stock-analyzer" && stockInput && !isAnalyzing) setTimeout(() => stockInput.focus(), 100);
@@ -602,4 +603,139 @@ function formatVolume(vol) {
     if (vol >= 100000) return (vol / 100000).toFixed(1) + " L";
     if (vol >= 1000) return (vol / 1000).toFixed(1) + " K";
     return vol.toString();
+}
+
+// ── Developing Patterns Scanner ────────────────────────────────
+var isDevScanning = false;
+async function runDevPatternScan(forceRefresh) {
+    if (isDevScanning) return; isDevScanning = true;
+    var scanBtn = document.getElementById("scanDevPatternsBtn");
+    var refreshBtn = document.getElementById("refreshDevPatternsBtn");
+    var statusEl = document.getElementById("devPatternStatus");
+    var resultsEl = document.getElementById("devPatternResults");
+    if (scanBtn) { scanBtn.disabled = true; scanBtn.innerHTML = "\u23F3 Scanning..."; }
+    if (refreshBtn) refreshBtn.disabled = true;
+    if (statusEl) {
+        statusEl.innerHTML = '<div class="scanner-progress"><div class="scanner-progress-bar"><div class="scanner-progress-fill dev-progress-fill"></div></div><span>Scanning for developing patterns...</span></div>';
+        statusEl.style.display = "block";
+    }
+    try {
+        var tf = (document.getElementById("devTimeframeFilter") || {}).value || "1d";
+        var typeF = (document.getElementById("devPatternTypeFilter") || {}).value || "";
+        var patF = (document.getElementById("devPatternNameFilter") || {}).value || "";
+        var stageF = (document.getElementById("devStageFilter") || {}).value || "";
+        var minConf = parseFloat((document.getElementById("devMinConfidence") || {}).value) || 0;
+        var url = API_BASE + "/api/developing-patterns/scan?timeframe=" + encodeURIComponent(tf) + "&refresh=" + forceRefresh;
+        if (typeF) url += "&type=" + encodeURIComponent(typeF);
+        if (patF) url += "&pattern=" + encodeURIComponent(patF);
+        if (stageF) url += "&stage=" + encodeURIComponent(stageF);
+        if (minConf > 0) url += "&min_confidence=" + minConf;
+        var res = await fetch(url);
+        if (!res.ok) {
+            var error = await res.json().catch(function() { return { detail: "Scan failed" }; });
+            throw new Error(error.detail || "Error " + res.status);
+        }
+        renderDevPatternResults(await res.json(), resultsEl, statusEl);
+    } catch (err) {
+        if (statusEl) statusEl.innerHTML = '<div class="scanner-error">\u274C ' + escapeHtml(err.message) + '</div>';
+        console.error(err);
+    } finally {
+        isDevScanning = false;
+        if (scanBtn) { scanBtn.disabled = false; scanBtn.innerHTML = "\uD83D\uDD0D Scan Now"; }
+        if (refreshBtn) refreshBtn.disabled = false;
+    }
+}
+
+function renderDevPatternResults(data, resultsEl, statusEl) {
+    if (!resultsEl) return;
+    if (statusEl) {
+        var scanTime = data.last_scan ? new Date(data.last_scan + "Z").toLocaleString() : "N/A";
+        var cachedBadge = data.cached ? '<span class="scanner-cached-badge">cached</span>' : '<span class="scanner-fresh-badge">fresh</span>';
+        var tfLabel = {"15m":"15 Min","1h":"1 Hour","4h":"4 Hour","1d":"Daily"}[data.timeframe] || data.timeframe;
+        statusEl.innerHTML = '<div class="scanner-status-info"><span>Scanned: <strong>' + (data.total_scanned||0) + '</strong> stocks</span><span>Found: <strong>' + (data.stocks_with_patterns||0) + '</strong> with patterns</span><span>Timeframe: <strong>' + tfLabel + '</strong></span><span>Last scan: ' + scanTime + ' ' + cachedBadge + '</span></div>';
+        statusEl.style.display = "block";
+    }
+    if (!data.results || data.results.length === 0) {
+        resultsEl.innerHTML = '<div class="scanner-empty"><p>No developing patterns found matching your filters.</p><p class="scanner-hint">Try different filters or timeframes.</p></div>';
+        return;
+    }
+    var html = "";
+    for (var stock of data.results) {
+        var priceStr = stock.price ? "\u20b9" + stock.price.toFixed(2) : "";
+        var tickerDisplay = (stock.ticker || "").replace(".NS", "");
+        var dataStatus = stock.data_status === "live" ? '<span class="dev-data-live">\u25CF Live</span>' : '<span class="dev-data-delayed">\u25CF Delayed</span>';
+        html += '<div class="dev-stock-card">';
+        html += '<div class="dev-stock-header"><div class="dev-stock-info"><span class="dev-stock-name">' + escapeHtml(stock.name) + '</span><span class="dev-stock-ticker">' + escapeHtml(tickerDisplay) + '</span>' + (priceStr ? '<span class="dev-stock-price">' + priceStr + '</span>' : '') + dataStatus + '</div>';
+        html += '<button class="scanner-analyze-btn" onclick="analyzeFromScanner(\'' + escapeHtml(stock.name) + '\')">Analyze \u2192</button></div>';
+        html += '<div class="dev-patterns-list">';
+        for (var p of stock.patterns) {
+            html += renderDevPatternCard(p);
+        }
+        html += '</div></div>';
+    }
+    resultsEl.innerHTML = html;
+}
+
+function renderDevPatternCard(p) {
+    var typeClass = p.type === "bullish" ? "dev-pat-bullish" : p.type === "bearish" ? "dev-pat-bearish" : "dev-pat-neutral";
+    var emoji = p.type === "bullish" ? "\uD83D\uDFE2" : p.type === "bearish" ? "\uD83D\uDD34" : "\uD83D\uDFE1";
+    var stageClass = "dev-stage-default";
+    if (p.stage && p.stage.includes("Stage 5")) stageClass = "dev-stage-confirmed";
+    else if (p.stage && p.stage.includes("Stage 4")) stageClass = "dev-stage-breakout";
+    else if (p.stage && p.stage.includes("Stage 3")) stageClass = "dev-stage-almost";
+    else if (p.stage && p.stage.includes("Stage 2")) stageClass = "dev-stage-developing";
+    else if (p.stage && p.stage.includes("Stage 1")) stageClass = "dev-stage-early";
+    else if (p.stage === "Invalidated") stageClass = "dev-stage-invalid";
+
+    var confColor = p.structure_confidence >= 90 ? "var(--accent-green)" : p.structure_confidence >= 70 ? "var(--accent-gold)" : "var(--accent-red)";
+    var brkColor = p.breakout_confidence >= 70 ? "var(--accent-green)" : p.breakout_confidence >= 40 ? "var(--accent-gold)" : "var(--text-muted)";
+
+    var html = '<div class="dev-pattern-card ' + typeClass + '">';
+    // Header row
+    html += '<div class="dev-pat-header"><span class="dev-pat-emoji">' + emoji + '</span><span class="dev-pat-name">' + escapeHtml(p.pattern) + '</span><span class="dev-pat-type">' + (p.type||"").toUpperCase() + '</span><span class="dev-pat-stage ' + stageClass + '">' + escapeHtml(p.stage || "") + '</span></div>';
+
+    // Confidence bars
+    html += '<div class="dev-conf-row">';
+    html += '<div class="dev-conf-item"><span class="dev-conf-label">Structure Confidence</span><div class="dev-conf-bar"><div class="dev-conf-fill" style="width:' + (p.structure_confidence||0) + '%;background:' + confColor + '"></div></div><span class="dev-conf-val">' + (p.structure_confidence||0) + '</span></div>';
+    html += '<div class="dev-conf-item"><span class="dev-conf-label">Breakout Strength</span><div class="dev-conf-bar"><div class="dev-conf-fill" style="width:' + (p.breakout_confidence||0) + '%;background:' + brkColor + '"></div></div><span class="dev-conf-val">' + (p.breakout_confidence||0) + '</span></div>';
+    html += '</div>';
+
+    // Description
+    if (p.description) {
+        html += '<div class="dev-pat-desc">' + escapeHtml(p.description) + '</div>';
+    }
+
+    // Key levels grid
+    html += '<div class="dev-levels-grid">';
+    if (p.breakout_level) html += '<div class="dev-level"><span class="dev-level-label">Breakout</span><span class="dev-level-val dev-level-breakout">\u20b9' + p.breakout_level + '</span></div>';
+    if (p.target) html += '<div class="dev-level"><span class="dev-level-label">Target</span><span class="dev-level-val dev-level-target">\u20b9' + p.target + '</span></div>';
+    if (p.target_up) html += '<div class="dev-level"><span class="dev-level-label">Target \u2191</span><span class="dev-level-val dev-level-target">\u20b9' + p.target_up + '</span></div>';
+    if (p.target_down) html += '<div class="dev-level"><span class="dev-level-label">Target \u2193</span><span class="dev-level-val dev-level-target-bear">\u20b9' + p.target_down + '</span></div>';
+    if (p.invalidation) html += '<div class="dev-level"><span class="dev-level-label">Invalidation</span><span class="dev-level-val dev-level-invalid">\u20b9' + p.invalidation + '</span></div>';
+    if (p.dynamic_neckline) html += '<div class="dev-level"><span class="dev-level-label">Neckline</span><span class="dev-level-val">\u20b9' + p.dynamic_neckline + '</span></div>';
+    if (p.neckline) html += '<div class="dev-level"><span class="dev-level-label">Neckline</span><span class="dev-level-val">\u20b9' + p.neckline + '</span></div>';
+    if (p.left_shoulder) html += '<div class="dev-level"><span class="dev-level-label">L.Shoulder</span><span class="dev-level-val">\u20b9' + p.left_shoulder + '</span></div>';
+    if (p.head) html += '<div class="dev-level"><span class="dev-level-label">Head</span><span class="dev-level-val">\u20b9' + p.head + '</span></div>';
+    if (p.right_shoulder) html += '<div class="dev-level"><span class="dev-level-label">R.Shoulder</span><span class="dev-level-val">\u20b9' + p.right_shoulder + '</span></div>';
+    if (p.right_shoulder_zone) html += '<div class="dev-level"><span class="dev-level-label">RS Zone</span><span class="dev-level-val dev-level-zone">' + escapeHtml(p.right_shoulder_zone) + '</span></div>';
+    if (p.peak_1) html += '<div class="dev-level"><span class="dev-level-label">Peak 1</span><span class="dev-level-val">\u20b9' + p.peak_1 + '</span></div>';
+    if (p.peak_2) html += '<div class="dev-level"><span class="dev-level-label">Peak 2</span><span class="dev-level-val">\u20b9' + p.peak_2 + '</span></div>';
+    if (p.trough_1) html += '<div class="dev-level"><span class="dev-level-label">Trough 1</span><span class="dev-level-val">\u20b9' + p.trough_1 + '</span></div>';
+    if (p.trough_2) html += '<div class="dev-level"><span class="dev-level-label">Trough 2</span><span class="dev-level-val">\u20b9' + p.trough_2 + '</span></div>';
+    if (p.resistance) html += '<div class="dev-level"><span class="dev-level-label">Resistance</span><span class="dev-level-val">\u20b9' + p.resistance + '</span></div>';
+    if (p.support) html += '<div class="dev-level"><span class="dev-level-label">Support</span><span class="dev-level-val">\u20b9' + p.support + '</span></div>';
+    if (p.cup_bottom) html += '<div class="dev-level"><span class="dev-level-label">Cup Bottom</span><span class="dev-level-val">\u20b9' + p.cup_bottom + '</span></div>';
+    if (p.current_price) html += '<div class="dev-level"><span class="dev-level-label">CMP</span><span class="dev-level-val dev-level-cmp">\u20b9' + p.current_price + '</span></div>';
+    html += '</div>';
+
+    // Footer with timestamp
+    if (p.last_candle_time) {
+        var ts = new Date(p.last_candle_time).toLocaleString();
+        html += '<div class="dev-pat-footer"><span class="dev-pat-ts">Last updated: ' + ts + '</span>';
+        if (p.data_status === "delayed") html += '<span class="dev-data-delayed-small">\u26A0 Historical data (not live)</span>';
+        html += '</div>';
+    }
+
+    html += '</div>';
+    return html;
 }

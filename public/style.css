@@ -31,6 +31,7 @@ body { font-family: 'Segoe UI', -apple-system, BlinkMacSystemFont, 'Roboto', san
 .tab-btn.active { color: var(--accent-cyan); border-bottom-color: var(--accent-cyan); background: rgba(0,210,211,0.05); }
 .tab-btn[data-tab="pattern-scanner"].active { color: var(--accent-purple); border-bottom-color: var(--accent-purple); background: rgba(168,85,247,0.05); }
 .tab-btn[data-tab="active-trading"].active { color: var(--accent-orange); border-bottom-color: var(--accent-orange); background: rgba(255,99,72,0.05); }
+.tab-btn[data-tab="developing-patterns"].active { color: var(--accent-cyan); border-bottom-color: var(--accent-cyan); background: rgba(0,210,211,0.05); }
 .tab-content { flex: 1; overflow-y: auto; display: flex; flex-direction: column; }
 .tab-content.hidden { display: none; }
 
@@ -450,6 +451,70 @@ body { font-family: 'Segoe UI', -apple-system, BlinkMacSystemFont, 'Roboto', san
     .verdict-bullet { flex-direction: column; gap: 4px; }
     .verdict-bullet-icon { width: auto; }
     .btn-text { display: none; }
+}
+
+/* ── Developing Patterns Tab ── */
+.developing-patterns-tab-content { padding: 16px 20px; display: flex; flex-direction: column; flex: 1; overflow-y: auto; }
+.dev-scan-btn { background: var(--accent-cyan); }
+.dev-scan-btn:hover:not(:disabled) { background: #00b8b8; box-shadow: 0 0 10px rgba(0,210,211,0.4); }
+.dev-progress-fill { background: var(--accent-cyan) !important; }
+.dev-pattern-results { display: flex; flex-direction: column; gap: 12px; }
+.dev-stock-card { background: var(--bg-tertiary); border: 1px solid rgba(0,210,211,0.2); border-radius: 10px; padding: 12px 14px; transition: border-color 0.2s; }
+.dev-stock-card:hover { border-color: rgba(0,210,211,0.5); }
+.dev-stock-header { display: flex; justify-content: space-between; align-items: center; margin-bottom: 10px; gap: 8px; }
+.dev-stock-info { display: flex; align-items: center; gap: 8px; flex-wrap: wrap; min-width: 0; }
+.dev-stock-name { font-weight: 600; font-size: 0.9rem; color: var(--text-primary); }
+.dev-stock-ticker { font-size: 0.72rem; color: var(--text-secondary); background: var(--bg-primary); padding: 2px 6px; border-radius: 4px; }
+.dev-stock-price { font-size: 0.8rem; color: var(--accent-cyan); font-weight: 600; }
+.dev-data-live { font-size: 0.65rem; color: var(--accent-green); font-weight: 600; }
+.dev-data-delayed { font-size: 0.65rem; color: var(--accent-gold); font-weight: 600; }
+.dev-patterns-list { display: flex; flex-direction: column; gap: 8px; }
+.dev-pattern-card { padding: 10px 12px; border-radius: 8px; border-left: 3px solid transparent; background: rgba(255,255,255,0.02); }
+.dev-pat-bullish { border-left-color: var(--accent-green); background: rgba(0,210,106,0.04); }
+.dev-pat-bearish { border-left-color: var(--accent-red); background: rgba(255,71,87,0.04); }
+.dev-pat-neutral { border-left-color: var(--accent-gold); background: rgba(255,165,2,0.04); }
+.dev-pat-header { display: flex; align-items: center; gap: 6px; margin-bottom: 6px; flex-wrap: wrap; }
+.dev-pat-emoji { font-size: 0.8rem; }
+.dev-pat-name { font-weight: 700; font-size: 0.85rem; color: var(--text-primary); }
+.dev-pat-type { font-size: 0.6rem; font-weight: 700; padding: 1px 5px; border-radius: 3px; letter-spacing: 0.5px; }
+.dev-pat-bullish .dev-pat-type { background: rgba(0,210,106,0.15); color: var(--accent-green); }
+.dev-pat-bearish .dev-pat-type { background: rgba(255,71,87,0.15); color: var(--accent-red); }
+.dev-pat-neutral .dev-pat-type { background: rgba(255,165,2,0.15); color: var(--accent-gold); }
+.dev-pat-stage { font-size: 0.62rem; font-weight: 600; padding: 2px 6px; border-radius: 4px; }
+.dev-stage-early { background: rgba(104,104,128,0.2); color: var(--text-secondary); }
+.dev-stage-developing { background: rgba(0,210,211,0.15); color: var(--accent-cyan); }
+.dev-stage-almost { background: rgba(255,165,2,0.15); color: var(--accent-gold); }
+.dev-stage-breakout { background: rgba(168,85,247,0.15); color: var(--accent-purple); }
+.dev-stage-confirmed { background: rgba(0,210,106,0.2); color: var(--accent-green); }
+.dev-stage-invalid { background: rgba(255,71,87,0.15); color: var(--accent-red); text-decoration: line-through; }
+.dev-stage-default { background: rgba(104,104,128,0.15); color: var(--text-muted); }
+.dev-conf-row { display: flex; gap: 12px; margin-bottom: 8px; flex-wrap: wrap; }
+.dev-conf-item { flex: 1; min-width: 140px; display: flex; align-items: center; gap: 6px; }
+.dev-conf-label { font-size: 0.65rem; color: var(--text-muted); white-space: nowrap; min-width: 100px; }
+.dev-conf-bar { flex: 1; height: 6px; background: var(--bg-primary); border-radius: 3px; overflow: hidden; min-width: 60px; }
+.dev-conf-fill { height: 100%; border-radius: 3px; transition: width 0.3s; }
+.dev-conf-val { font-size: 0.7rem; font-weight: 700; color: var(--text-primary); min-width: 24px; text-align: right; }
+.dev-pat-desc { font-size: 0.72rem; color: var(--text-secondary); line-height: 1.4; margin-bottom: 8px; }
+.dev-levels-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(110px, 1fr)); gap: 4px 8px; margin-bottom: 6px; }
+.dev-level { display: flex; flex-direction: column; padding: 3px 0; }
+.dev-level-label { font-size: 0.6rem; color: var(--text-muted); text-transform: uppercase; letter-spacing: 0.3px; }
+.dev-level-val { font-size: 0.75rem; font-weight: 600; color: var(--text-primary); }
+.dev-level-breakout { color: var(--accent-purple); }
+.dev-level-target { color: var(--accent-green); }
+.dev-level-target-bear { color: var(--accent-red); }
+.dev-level-invalid { color: var(--accent-red); }
+.dev-level-cmp { color: var(--accent-cyan); }
+.dev-level-zone { color: var(--accent-gold); font-size: 0.68rem; }
+.dev-pat-footer { display: flex; justify-content: space-between; align-items: center; margin-top: 4px; padding-top: 4px; border-top: 1px solid rgba(255,255,255,0.05); flex-wrap: wrap; gap: 4px; }
+.dev-pat-ts { font-size: 0.6rem; color: var(--text-muted); }
+.dev-data-delayed-small { font-size: 0.6rem; color: var(--accent-gold); }
+
+@media (max-width: 600px) {
+    .dev-conf-row { flex-direction: column; gap: 6px; }
+    .dev-levels-grid { grid-template-columns: 1fr 1fr; }
+    .dev-stock-header { flex-direction: column; align-items: flex-start; gap: 6px; }
+    .scanner-filters { flex-direction: column; }
+    .tab-btn { font-size: 0.68rem; padding: 8px 6px; }
 }
 
 /* ── PWA Standalone Mode ── */
