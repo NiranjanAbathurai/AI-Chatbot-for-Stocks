@@ -256,6 +256,51 @@
     </div>
 
     <!-- ═══════════════════════════════════════════════════════════ -->
+    <!-- Chart Modal (Pattern Chart Viewer) -->
+    <!-- ═══════════════════════════════════════════════════════════ -->
+    <div class="chart-modal-overlay" id="chartModal">
+        <div class="chart-modal">
+            <div class="chart-modal-header">
+                <h3 id="chartModalTitle">📊 Pattern Chart</h3>
+                <div class="chart-modal-controls">
+                    <select id="chartTimeframe" class="chart-tf-select" onchange="changeChartTimeframe()">
+                        <option value="1d">📅 Daily</option>
+                        <option value="1h">⏰ 1 Hour</option>
+                        <option value="15m">⚡ 15 Min</option>
+                    </select>
+                    <button class="modal-close" onclick="closeChartModal()">✕</button>
+                </div>
+            </div>
+            <div class="chart-modal-body" id="chartModalBody">
+                <div class="chart-empty">Click "📊 Chart" on any pattern to view the candlestick chart with AI-drawn pattern overlays.</div>
+            </div>
+        </div>
+    </div>
+
+    <!-- ═══════════════════════════════════════════════════════════ -->
+    <!-- Pattern Image Modal -->
+    <!-- ═══════════════════════════════════════════════════════════ -->
+    <div class="chart-modal-overlay" id="patternImageModal">
+        <div class="chart-modal pattern-image-modal">
+            <div class="chart-modal-header">
+                <h3 id="patternImageTitle">📸 Pattern Chart Image</h3>
+                <div class="chart-modal-controls">
+                    <select id="patternImageTimeframe" class="chart-tf-select" onchange="changePatternImageTimeframe()">
+                        <option value="1d">📅 Daily</option>
+                        <option value="1h">⏰ 1 Hour</option>
+                        <option value="15m">⚡ 15 Min</option>
+                    </select>
+                    <button class="pattern-img-download-btn" id="patternImgDownloadBtn" onclick="downloadPatternImage()" title="Download Image">⬇️ Save</button>
+                    <button class="modal-close" onclick="closePatternImageModal()">✕</button>
+                </div>
+            </div>
+            <div class="chart-modal-body pattern-image-body" id="patternImageBody">
+                <div class="chart-empty">Click "📸 Image" on any stock to generate a pattern chart image.</div>
+            </div>
+        </div>
+    </div>
+
+    <!-- ═══════════════════════════════════════════════════════════ -->
     <!-- Detail Modal (for AI response full view) -->
     <!-- ═══════════════════════════════════════════════════════════ -->
     <div class="detail-modal-overlay" id="detailModal">
@@ -271,5 +316,6 @@
     </div>
 
     <script src="/static/app.js"></script>
+    <script src="/static/chart.js"></script>
 </body>
 </html>

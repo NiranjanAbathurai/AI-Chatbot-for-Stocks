@@ -1,4 +1,4 @@
-"""FastAPI application entry point with CORS, static files, and background scheduler."""
+"""FastAPI application entry point with CORS, static files, background scheduler, and chart API."""
 
 import ssl_fix 
 
@@ -12,7 +12,7 @@ from fastapi.staticfiles import StaticFiles
 from fastapi.responses import FileResponse
 
 from config import settings
-from routers import debate, screener, alerts, watchlist, developing_patterns
+from routers import debate, screener, alerts, watchlist, developing_patterns, chart
 
 # ── Logging Setup ───────────────────────────────────────────────
 logging.basicConfig(
@@ -51,6 +51,9 @@ app.include_router(watchlist.router)
 
 # Phase 4: Developing Pattern Scanner
 app.include_router(developing_patterns.router)
+
+# Phase 5: Chart Data with Pattern Drawings
+app.include_router(chart.router)
 
 # ── Serve Frontend Static Files ─────────────────────────────────
 frontend_dir = Path(__file__).parent.parent / "frontend"

@@ -1,5 +1,5 @@
 /**
- * Stock Debate Chat — Frontend Application
+ * Stock Debate Chat â€” Frontend Application
  * 3-Tab layout: Pattern Scanner | Stock Analyzer | Active Trading Scanner
  * Input at TOP, results flow below. Verdict as bullet points.
  */
@@ -18,12 +18,12 @@ const MODE_LABELS = {
     investment: "\u{1F3E6} Investment",
 };
 
-// ── Stock Dropdown State ───────────────────────────────────────
+// â”€â”€ Stock Dropdown State â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
 let allStocks = [], allCategories = [], filteredStocks = [];
 let selectedCategory = "all", highlightedIndex = -1, dropdownVisible = false, stocksLoaded = false;
 let activeTab = "pattern-scanner";
 
-// ── Initialize ─────────────────────────────────────────────────
+// â”€â”€ Initialize â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
 document.addEventListener("DOMContentLoaded", () => {
     checkHealth();
     loadStockList();
@@ -37,7 +37,7 @@ function registerServiceWorker() {
     }
 }
 
-// ── Tab Switching ──────────────────────────────────────────────
+// â”€â”€ Tab Switching â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
 function switchTab(tabId) {
     activeTab = tabId;
     document.querySelectorAll(".tab-btn").forEach(b => b.classList.toggle("active", b.dataset.tab === tabId));
@@ -48,7 +48,7 @@ function switchTab(tabId) {
     if (tabId === "stock-analyzer" && stockInput && !isAnalyzing) setTimeout(() => stockInput.focus(), 100);
 }
 
-// ── Health Check ───────────────────────────────────────────────
+// â”€â”€ Health Check â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
 async function checkHealth() {
     const dot = document.querySelector(".status-dot"), txt = document.querySelector(".status-text");
     try {
@@ -63,7 +63,7 @@ async function checkHealth() {
     } catch { dot.classList.add("error"); dot.classList.remove("connected"); txt.textContent = "API unavailable"; }
 }
 
-// ── Stock List Loader ──────────────────────────────────────────
+// â”€â”€ Stock List Loader â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
 async function loadStockList() {
     try {
         const res = await fetch(`${API_BASE}/api/stocks`);
@@ -78,7 +78,7 @@ async function loadStockList() {
     }
 }
 
-// ── Stock Dropdown ─────────────────────────────────────────────
+// â”€â”€ Stock Dropdown â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
 function initStockDropdown() {
     const wrapper = document.getElementById("stockSearchWrapper");
     stockInput.addEventListener("focus", () => { if (!isAnalyzing) showDropdown(); });
@@ -159,7 +159,7 @@ function updateHighlight() {
 function selectStock(stock) { stockInput.value = stock.name; hideDropdown(); if (!isAnalyzing) handleAnalyze(); }
 function updateStockCount(count) { const e = document.getElementById("stockCount"); if (e) e.textContent = `${count} stock${count !== 1 ? "s" : ""}`; }
 
-// ── Analyze Stock ──────────────────────────────────────────────
+// â”€â”€ Analyze Stock â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
 function handleAnalyze() { const n = stockInput.value.trim(); if (!n || isAnalyzing) return; hideDropdown(); analyzeStock(n); }
 
 async function analyzeStock(stockName) {
@@ -212,7 +212,7 @@ async function analyzeStock(stockName) {
 
 function resetUI() { isAnalyzing = false; stockInput.disabled = false; analyzeBtn.disabled = false; if (analysisMode) analysisMode.disabled = false; stockInput.focus(); }
 
-// ── Step Tracker ───────────────────────────────────────────────
+// â”€â”€ Step Tracker â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
 function addStepTracker() {
     const t = document.createElement("div"); t.className = "message step-tracker";
     t.innerHTML = `<div class="step-tracker-title">Analysis Progress</div><div class="steps">
@@ -234,7 +234,7 @@ function updateStep(tracker, stepNum, status, label) {
     if (label) labelEl.textContent = label; scrollToBottom();
 }
 
-// ── Summary / Detail Parsing ───────────────────────────────────
+// â”€â”€ Summary / Detail Parsing â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
 function parseSummaryAndDetails(text) {
     const m = text.match(/<!-- SUMMARY_START -->([\s\S]*?)<!-- SUMMARY_END -->/);
     if (m) return { summary: m[1].trim(), details: text.replace(m[0], '').trim(), hasSummary: true };
@@ -242,7 +242,7 @@ function parseSummaryAndDetails(text) {
     return { summary: fp.substring(0, 250) + (fp.length > 250 ? '...' : ''), details: text, hasSummary: false };
 }
 
-// ── Verdict Section Parser — Extract bullet points ─────────────
+// â”€â”€ Verdict Section Parser â€” Extract bullet points â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
 function parseVerdictSections(analysisText) {
     const sections = [];
     const patterns = [
@@ -271,17 +271,22 @@ function buildVerdictBullets(sections) {
     return html + '</ul>';
 }
 
-// ── Detail Modal ───────────────────────────────────────────────
+// â”€â”€ Detail Modal â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
 function openDetailModal(title, fullMarkdown) {
     const o = document.getElementById("detailModal"), mt = document.getElementById("modalTitle"), mb = document.getElementById("modalBody");
     if (!o) return; mt.textContent = title; mb.innerHTML = renderMarkdown(fullMarkdown);
     o.classList.add("visible"); document.body.style.overflow = "hidden";
 }
 function closeDetailModal() { const o = document.getElementById("detailModal"); if (o) { o.classList.remove("visible"); document.body.style.overflow = ""; } }
-document.addEventListener("click", (e) => { if (e.target.classList.contains("detail-modal-overlay")) closeDetailModal(); });
-document.addEventListener("keydown", (e) => { if (e.key === "Escape") closeDetailModal(); });
+document.addEventListener("click", (e) => {
+    if (e.target.classList.contains("detail-modal-overlay")) closeDetailModal();
+    if (e.target.classList.contains("chart-modal-overlay")) closeChartModal();
+});
+document.addEventListener("keydown", (e) => {
+    if (e.key === "Escape") { closeDetailModal(); closeChartModal(); }
+});
 
-// ── Message Builders ───────────────────────────────────────────
+// â”€â”€ Message Builders â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
 function addUserMessage(text, modeLabel) {
     const m = document.createElement("div"); m.className = "message user-message";
     m.innerHTML = `<div class="message-label">You</div><div class="message-body">Analyze <strong>${escapeHtml(text)}</strong> <span class="mode-badge">${escapeHtml(modeLabel)}</span></div>`;
@@ -334,7 +339,7 @@ function addDisclaimerMessage(text) {
     chatMessages.appendChild(m); scrollToBottom();
 }
 
-// ── Stock Data Message ─────────────────────────────────────────
+// â”€â”€ Stock Data Message â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
 function addStockDataMessage(name, ticker, data) {
     const m = document.createElement("div"); m.className = "message stock-data-message";
     m.innerHTML = `<div class="stock-data-header"><h3>\u{1F4C8} ${escapeHtml(name)}</h3><span class="ticker">${escapeHtml(ticker)}</span></div><div class="stock-data-grid">${buildStockDataGrid(data)}</div>`;
@@ -361,28 +366,28 @@ function buildStockDataGrid(data) {
     }).join("");
 }
 
-// ── Technical Analysis Message ─────────────────────────────────
+// â”€â”€ Technical Analysis Message â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
 function addTechnicalAnalysisMessage(techData, currentPrice) {
     const m = document.createElement("div"); m.className = "message technical-message";
-    let html = '<div class="tech-header"><h3>📐 Technical Analysis</h3><span class="tech-subtitle">Support/Resistance • Chart Patterns • Swing Indicators</span></div>';
+    let html = '<div class="tech-header"><h3>ðŸ“ Technical Analysis</h3><span class="tech-subtitle">Support/Resistance â€¢ Chart Patterns â€¢ Swing Indicators</span></div>';
 
     const sr = techData.support_resistance || {};
     if (sr.support_levels?.length || sr.resistance_levels?.length) {
-        html += '<div class="tech-section"><h4>🎯 Support & Resistance Levels</h4><div class="sr-grid">';
+        html += '<div class="tech-section"><h4>ðŸŽ¯ Support & Resistance Levels</h4><div class="sr-grid">';
         if (sr.resistance_levels?.length) {
-            html += '<div class="sr-column resistance-col"><div class="sr-col-header resistance-header">Resistance ↑</div>';
+            html += '<div class="sr-column resistance-col"><div class="sr-col-header resistance-header">Resistance â†‘</div>';
             sr.resistance_levels.forEach((r, i) => {
                 const pct = currentPrice ? ((r.price - currentPrice) / currentPrice * 100).toFixed(1) : "?";
-                html += '<div class="sr-level resistance-level"><span class="sr-label">R' + (i+1) + '</span><span class="sr-price">₹' + r.price.toFixed(2) + '</span><span class="sr-zone">₹' + r.zone_low + '–₹' + r.zone_high + '</span><span class="sr-strength">' + "●".repeat(Math.min(r.strength, 5)) + '</span><span class="sr-pct">+' + pct + '%</span></div>';
+                html += '<div class="sr-level resistance-level"><span class="sr-label">R' + (i+1) + '</span><span class="sr-price">â‚¹' + r.price.toFixed(2) + '</span><span class="sr-zone">â‚¹' + r.zone_low + 'â€“â‚¹' + r.zone_high + '</span><span class="sr-strength">' + "â—".repeat(Math.min(r.strength, 5)) + '</span><span class="sr-pct">+' + pct + '%</span></div>';
             });
             html += '</div>';
         }
-        if (currentPrice) html += '<div class="sr-current-price"><span>CMP</span><span class="cmp-value">₹' + currentPrice.toFixed(2) + '</span></div>';
+        if (currentPrice) html += '<div class="sr-current-price"><span>CMP</span><span class="cmp-value">â‚¹' + currentPrice.toFixed(2) + '</span></div>';
         if (sr.support_levels?.length) {
-            html += '<div class="sr-column support-col"><div class="sr-col-header support-header">Support ↓</div>';
+            html += '<div class="sr-column support-col"><div class="sr-col-header support-header">Support â†“</div>';
             sr.support_levels.forEach((s, i) => {
                 const pct = currentPrice ? ((currentPrice - s.price) / currentPrice * 100).toFixed(1) : "?";
-                html += '<div class="sr-level support-level"><span class="sr-label">S' + (i+1) + '</span><span class="sr-price">₹' + s.price.toFixed(2) + '</span><span class="sr-zone">₹' + s.zone_low + '–₹' + s.zone_high + '</span><span class="sr-strength">' + "●".repeat(Math.min(s.strength, 5)) + '</span><span class="sr-pct">-' + pct + '%</span></div>';
+                html += '<div class="sr-level support-level"><span class="sr-label">S' + (i+1) + '</span><span class="sr-price">â‚¹' + s.price.toFixed(2) + '</span><span class="sr-zone">â‚¹' + s.zone_low + 'â€“â‚¹' + s.zone_high + '</span><span class="sr-strength">' + "â—".repeat(Math.min(s.strength, 5)) + '</span><span class="sr-pct">-' + pct + '%</span></div>';
             });
             html += '</div>';
         }
@@ -391,35 +396,35 @@ function addTechnicalAnalysisMessage(techData, currentPrice) {
 
     if (sr.fibonacci && sr.fibonacci.swing_high) {
         const f = sr.fibonacci;
-        html += '<div class="tech-section"><h4>📏 Fibonacci Retracement</h4><div class="fib-grid">';
-        html += '<div class="fib-level"><span class="fib-pct">0%</span><span class="fib-price">₹' + f.level_0 + '</span></div>';
-        html += '<div class="fib-level"><span class="fib-pct">23.6%</span><span class="fib-price">₹' + f.level_236 + '</span></div>';
-        html += '<div class="fib-level"><span class="fib-pct">38.2%</span><span class="fib-price">₹' + f.level_382 + '</span></div>';
-        html += '<div class="fib-level fib-key"><span class="fib-pct">50.0%</span><span class="fib-price">₹' + f.level_500 + '</span></div>';
-        html += '<div class="fib-level fib-key"><span class="fib-pct">61.8%</span><span class="fib-price">₹' + f.level_618 + '</span></div>';
-        html += '<div class="fib-level"><span class="fib-pct">78.6%</span><span class="fib-price">₹' + f.level_786 + '</span></div>';
-        html += '<div class="fib-level"><span class="fib-pct">100%</span><span class="fib-price">₹' + f.level_100 + '</span></div>';
+        html += '<div class="tech-section"><h4>ðŸ“ Fibonacci Retracement</h4><div class="fib-grid">';
+        html += '<div class="fib-level"><span class="fib-pct">0%</span><span class="fib-price">â‚¹' + f.level_0 + '</span></div>';
+        html += '<div class="fib-level"><span class="fib-pct">23.6%</span><span class="fib-price">â‚¹' + f.level_236 + '</span></div>';
+        html += '<div class="fib-level"><span class="fib-pct">38.2%</span><span class="fib-price">â‚¹' + f.level_382 + '</span></div>';
+        html += '<div class="fib-level fib-key"><span class="fib-pct">50.0%</span><span class="fib-price">â‚¹' + f.level_500 + '</span></div>';
+        html += '<div class="fib-level fib-key"><span class="fib-pct">61.8%</span><span class="fib-price">â‚¹' + f.level_618 + '</span></div>';
+        html += '<div class="fib-level"><span class="fib-pct">78.6%</span><span class="fib-price">â‚¹' + f.level_786 + '</span></div>';
+        html += '<div class="fib-level"><span class="fib-pct">100%</span><span class="fib-price">â‚¹' + f.level_100 + '</span></div>';
         html += '</div></div>';
     }
 
     if (sr.pivot_classic && sr.pivot_classic.pivot) {
         const pv = sr.pivot_classic;
-        html += '<div class="tech-section"><h4>🔄 Classic Pivot Points</h4><div class="pivot-grid">';
-        html += '<div class="pivot-item pivot-r">R3: ₹' + pv.r3 + '</div><div class="pivot-item pivot-r">R2: ₹' + pv.r2 + '</div>';
-        html += '<div class="pivot-item pivot-r">R1: ₹' + pv.r1 + '</div><div class="pivot-item pivot-p">Pivot: ₹' + pv.pivot + '</div>';
-        html += '<div class="pivot-item pivot-s">S1: ₹' + pv.s1 + '</div><div class="pivot-item pivot-s">S2: ₹' + pv.s2 + '</div>';
-        html += '<div class="pivot-item pivot-s">S3: ₹' + pv.s3 + '</div>';
+        html += '<div class="tech-section"><h4>ðŸ”„ Classic Pivot Points</h4><div class="pivot-grid">';
+        html += '<div class="pivot-item pivot-r">R3: â‚¹' + pv.r3 + '</div><div class="pivot-item pivot-r">R2: â‚¹' + pv.r2 + '</div>';
+        html += '<div class="pivot-item pivot-r">R1: â‚¹' + pv.r1 + '</div><div class="pivot-item pivot-p">Pivot: â‚¹' + pv.pivot + '</div>';
+        html += '<div class="pivot-item pivot-s">S1: â‚¹' + pv.s1 + '</div><div class="pivot-item pivot-s">S2: â‚¹' + pv.s2 + '</div>';
+        html += '<div class="pivot-item pivot-s">S3: â‚¹' + pv.s3 + '</div>';
         html += '</div></div>';
     }
 
     if (sr.moving_averages && Object.keys(sr.moving_averages).length) {
         const ma = sr.moving_averages;
-        html += '<div class="tech-section"><h4>📊 Moving Averages</h4><div class="ma-grid">';
+        html += '<div class="tech-section"><h4>ðŸ“Š Moving Averages</h4><div class="ma-grid">';
         ["ema_20","sma_20","ema_50","sma_50","ema_100","sma_100","ema_200","sma_200"].forEach(key => {
             if (ma[key] !== undefined) {
                 const label = key.toUpperCase().replace("_", " ");
                 const ab = currentPrice && ma[key] < currentPrice ? "ma-above" : "ma-below";
-                html += '<div class="ma-item ' + ab + '"><span class="ma-label">' + label + '</span><span class="ma-price">₹' + ma[key].toFixed(2) + '</span></div>';
+                html += '<div class="ma-item ' + ab + '"><span class="ma-label">' + label + '</span><span class="ma-price">â‚¹' + ma[key].toFixed(2) + '</span></div>';
             }
         });
         html += '</div></div>';
@@ -427,14 +432,14 @@ function addTechnicalAnalysisMessage(techData, currentPrice) {
 
     const patterns = techData.chart_patterns || [];
     if (patterns.length) {
-        html += '<div class="tech-section"><h4>📈 Chart Patterns Detected</h4><div class="patterns-list">';
+        html += '<div class="tech-section"><h4>ðŸ“ˆ Chart Patterns Detected</h4><div class="patterns-list">';
         patterns.forEach(p => {
             const tc = p.type === "bullish" ? "pattern-bullish" : p.type === "bearish" ? "pattern-bearish" : "pattern-neutral";
-            const em = p.type === "bullish" ? "🟢" : p.type === "bearish" ? "🔴" : "🟡";
+            const em = p.type === "bullish" ? "ðŸŸ¢" : p.type === "bearish" ? "ðŸ”´" : "ðŸŸ¡";
             html += '<div class="pattern-card ' + tc + '"><div class="pattern-header"><span class="pattern-emoji">' + em + '</span><span class="pattern-name">' + escapeHtml(p.pattern) + '</span><span class="pattern-type">' + p.type.toUpperCase() + '</span>';
             if (p.reliability) html += '<span class="pattern-reliability">' + p.reliability + '</span>';
             html += '</div><div class="pattern-desc">' + escapeHtml(p.description || "") + '</div>';
-            if (p.target) html += '<div class="pattern-target">Target: ₹' + p.target + '</div>';
+            if (p.target) html += '<div class="pattern-target">Target: â‚¹' + p.target + '</div>';
             if (p.implication) html += '<div class="pattern-impl">' + escapeHtml(p.implication) + '</div>';
             html += '</div>';
         });
@@ -443,7 +448,7 @@ function addTechnicalAnalysisMessage(techData, currentPrice) {
 
     const swing = techData.swing_indicators || {};
     if (Object.keys(swing).length) {
-        html += '<div class="tech-section"><h4>🔧 Swing Trading Indicators</h4><div class="swing-grid">';
+        html += '<div class="tech-section"><h4>ðŸ”§ Swing Trading Indicators</h4><div class="swing-grid">';
         if (swing.swing_score !== undefined) {
             const sc = swing.swing_score >= 60 ? "var(--accent-green)" : swing.swing_score <= 40 ? "var(--accent-red)" : "var(--accent-gold)";
             html += '<div class="swing-score-card"><div class="swing-score-label">Swing Score</div><div class="swing-score-value" style="color:' + sc + '">' + swing.swing_score + '/100</div><div class="swing-score-bias">' + (swing.swing_bias || "Neutral") + '</div></div>';
@@ -452,7 +457,7 @@ function addTechnicalAnalysisMessage(techData, currentPrice) {
             { key: "rsi_14", label: "RSI (14)", signal: swing.rsi_signal },
             { key: "macd", label: "MACD", signal: swing.macd_trend, extra: swing.macd_crossover },
             { key: "bb_signal", label: "Bollinger", signal: swing.bb_signal },
-            { key: "atr_14", label: "ATR (14)", signal: "₹" + swing.atr_14 + " (" + swing.atr_pct + "%)", prefix: "" },
+            { key: "atr_14", label: "ATR (14)", signal: "â‚¹" + swing.atr_14 + " (" + swing.atr_pct + "%)", prefix: "" },
             { key: "stoch_rsi", label: "Stoch RSI", signal: swing.stoch_rsi_signal },
             { key: "relative_volume", label: "Rel. Volume", signal: swing.volume_signal },
             { key: "obv_trend", label: "OBV", signal: swing.obv_trend },
@@ -468,7 +473,7 @@ function addTechnicalAnalysisMessage(techData, currentPrice) {
             }
         });
         if (swing.suggested_sl && swing.suggested_target) {
-            html += '<div class="swing-atr-levels"><div class="atr-level atr-sl">SL: ₹' + swing.suggested_sl.toFixed(2) + '</div><div class="atr-level atr-target">Target: ₹' + swing.suggested_target.toFixed(2) + '</div></div>';
+            html += '<div class="swing-atr-levels"><div class="atr-level atr-sl">SL: â‚¹' + swing.suggested_sl.toFixed(2) + '</div><div class="atr-level atr-target">Target: â‚¹' + swing.suggested_target.toFixed(2) + '</div></div>';
         }
         html += '</div></div>';
     }
@@ -477,22 +482,22 @@ function addTechnicalAnalysisMessage(techData, currentPrice) {
     chatMessages.appendChild(m); scrollToBottom();
 }
 
-// ── Provider Badge Builder ─────────────────────────────────────
+// â”€â”€ Provider Badge Builder â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
 function buildProviderBadge(providerInfo) {
     if (!providerInfo) return "";
     var provider = providerInfo.provider || "none", attempted = providerInfo.providers_attempted || [], errors = providerInfo.errors || {};
     var isSuccess = provider !== "none", badgeClass = isSuccess ? "provider-success" : "provider-failed";
-    var icon = isSuccess ? "✓" : "✗", label = isSuccess ? provider : "all failed";
+    var icon = isSuccess ? "âœ“" : "âœ—", label = isSuccess ? provider : "all failed";
     var tooltipLines = [];
-    if (attempted.length > 0) tooltipLines.push("Attempted: " + attempted.join(" → "));
+    if (attempted.length > 0) tooltipLines.push("Attempted: " + attempted.join(" â†’ "));
     if (isSuccess) tooltipLines.push("Responded: " + provider);
     var errorEntries = Object.entries(errors);
-    if (errorEntries.length > 0) { tooltipLines.push("---"); for (var [prov, errMsg] of errorEntries) { tooltipLines.push(prov + ": " + (errMsg.length > 80 ? errMsg.substring(0, 80) + "…" : errMsg)); } }
+    if (errorEntries.length > 0) { tooltipLines.push("---"); for (var [prov, errMsg] of errorEntries) { tooltipLines.push(prov + ": " + (errMsg.length > 80 ? errMsg.substring(0, 80) + "â€¦" : errMsg)); } }
     var tooltip = escapeHtml(tooltipLines.join("\n"));
     return '<span class="provider-badge ' + badgeClass + '" title="' + tooltip + '"><span class="provider-icon">' + icon + '</span><span class="provider-name">' + escapeHtml(label) + '</span>' + (!isSuccess && attempted.length > 0 ? '<span class="provider-tried">(tried: ' + escapeHtml(attempted.join(", ")) + ')</span>' : '') + '</span>';
 }
 
-// ── Utilities ──────────────────────────────────────────────────
+// â”€â”€ Utilities â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
 function scrollToBottom() { var c = document.getElementById("chatContainer"); if (c) setTimeout(function() { c.scrollTop = c.scrollHeight; }, 50); }
 function escapeHtml(text) { var d = document.createElement("div"); d.textContent = text; return d.innerHTML; }
 function renderMarkdown(text) {
@@ -500,13 +505,13 @@ function renderMarkdown(text) {
     return text.replace(/&/g, "&amp;").replace(/</g, "&lt;").replace(/>/g, "&gt;").replace(/\*\*(.*?)\*\*/g, "<strong>$1</strong>").replace(/\*(.*?)\*/g, "<em>$1</em>").replace(/\n/g, "<br>");
 }
 
-// ── Pattern Scanner ────────────────────────────────────────────
+// â”€â”€ Pattern Scanner â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
 var isScanning = false;
 async function runPatternScan(forceRefresh) {
     if (isScanning) return; isScanning = true;
     var scanBtn = document.getElementById("scanPatternsBtn"), refreshBtn = document.getElementById("refreshPatternsBtn");
     var statusEl = document.getElementById("scannerStatus"), resultsEl = document.getElementById("scannerResults");
-    if (scanBtn) { scanBtn.disabled = true; scanBtn.innerHTML = "⏳ Scanning..."; }
+    if (scanBtn) { scanBtn.disabled = true; scanBtn.innerHTML = "â³ Scanning..."; }
     if (refreshBtn) refreshBtn.disabled = true;
     if (statusEl) { statusEl.innerHTML = '<div class="scanner-progress"><div class="scanner-progress-bar"><div class="scanner-progress-fill"></div></div><span>Scanning stocks for chart patterns...</span></div>'; statusEl.style.display = "block"; }
     try {
@@ -516,8 +521,8 @@ async function runPatternScan(forceRefresh) {
         var res = await fetch(url);
         if (!res.ok) { var error = await res.json().catch(function() { return { detail: "Scan failed" }; }); throw new Error(error.detail || "Error " + res.status); }
         renderPatternResults(await res.json(), resultsEl, statusEl);
-    } catch (err) { if (statusEl) statusEl.innerHTML = '<div class="scanner-error">❌ ' + escapeHtml(err.message) + '</div>'; console.error(err); }
-    finally { isScanning = false; if (scanBtn) { scanBtn.disabled = false; scanBtn.innerHTML = "🔍 Scan Now"; } if (refreshBtn) refreshBtn.disabled = false; }
+    } catch (err) { if (statusEl) statusEl.innerHTML = '<div class="scanner-error">âŒ ' + escapeHtml(err.message) + '</div>'; console.error(err); }
+    finally { isScanning = false; if (scanBtn) { scanBtn.disabled = false; scanBtn.innerHTML = "ðŸ” Scan Now"; } if (refreshBtn) refreshBtn.disabled = false; }
 }
 
 function renderPatternResults(data, resultsEl, statusEl) {
@@ -531,12 +536,12 @@ function renderPatternResults(data, resultsEl, statusEl) {
     if (!data.results || data.results.length === 0) { resultsEl.innerHTML = '<div class="scanner-empty"><p>No chart patterns found matching your filters.</p></div>'; return; }
     var html = "";
     for (var stock of data.results) {
-        var priceStr = stock.price ? "₹" + stock.price.toFixed(2) : "", tickerDisplay = stock.ticker.replace(".NS", "");
-        html += '<div class="scanner-stock-card"><div class="scanner-stock-header"><div class="scanner-stock-info"><span class="scanner-stock-name">' + escapeHtml(stock.name) + '</span><span class="scanner-stock-ticker">' + escapeHtml(tickerDisplay) + '</span>' + (priceStr ? '<span class="scanner-stock-price">' + priceStr + '</span>' : '') + '</div><button class="scanner-analyze-btn" onclick="analyzeFromScanner(\'' + escapeHtml(stock.name) + '\')">Analyze →</button></div><div class="scanner-patterns-list">';
+        var priceStr = stock.price ? "â‚¹" + stock.price.toFixed(2) : "", tickerDisplay = stock.ticker.replace(".NS", "");
+        html += '<div class="scanner-stock-card"><div class="scanner-stock-header"><div class="scanner-stock-info"><span class="scanner-stock-name">' + escapeHtml(stock.name) + '</span><span class="scanner-stock-ticker">' + escapeHtml(tickerDisplay) + '</span>' + (priceStr ? '<span class="scanner-stock-price">' + priceStr + '</span>' : '') + '</div><div class="scanner-stock-actions"><button class="chart-view-btn" onclick="openPatternChart(\'' + escapeHtml(stock.ticker) + '\', \'' + escapeHtml(stock.name) + '\', \'basic\')" title="View Chart">ðŸ"Š Chart</button><button class="chart-view-btn pattern-img-btn" onclick="openPatternImage(\'' + escapeHtml(stock.ticker) + '\', \'' + escapeHtml(stock.name) + '\', \'basic\')" title="Pattern Image">📸 Image</button><button class="scanner-analyze-btn" onclick="analyzeFromScanner(\'' + escapeHtml(stock.name) + '\')">Analyze â†'</button></div></div><div class="scanner-patterns-list">';
         for (var p of stock.patterns) {
             var typeClass = p.type === "bullish" ? "pattern-bullish" : p.type === "bearish" ? "pattern-bearish" : (p.type === "sideways" ? "pattern-sideways" : "pattern-neutral");
-            var emoji = p.type === "bullish" ? "🟢" : p.type === "bearish" ? "🔴" : "🟡";
-            html += '<div class="scanner-pattern-item ' + typeClass + '"><div class="scanner-pattern-top"><span class="scanner-pattern-emoji">' + emoji + '</span><span class="scanner-pattern-name">' + escapeHtml(p.pattern) + '</span><span class="scanner-pattern-type">' + (p.type || "neutral").toUpperCase() + '</span>' + (p.reliability ? '<span class="scanner-pattern-reliability">' + p.reliability + '</span>' : '') + '</div><div class="scanner-pattern-desc">' + escapeHtml(p.description || "") + '</div>' + (p.target ? '<div class="scanner-pattern-target">Target: ₹' + p.target + '</div>' : '') + (p.implication ? '<div class="scanner-pattern-impl">' + escapeHtml(p.implication) + '</div>' : '') + '</div>';
+            var emoji = p.type === "bullish" ? "ðŸŸ¢" : p.type === "bearish" ? "ðŸ”´" : "ðŸŸ¡";
+            html += '<div class="scanner-pattern-item ' + typeClass + '"><div class="scanner-pattern-top"><span class="scanner-pattern-emoji">' + emoji + '</span><span class="scanner-pattern-name">' + escapeHtml(p.pattern) + '</span><span class="scanner-pattern-type">' + (p.type || "neutral").toUpperCase() + '</span>' + (p.reliability ? '<span class="scanner-pattern-reliability">' + p.reliability + '</span>' : '') + '</div><div class="scanner-pattern-desc">' + escapeHtml(p.description || "") + '</div>' + (p.target ? '<div class="scanner-pattern-target">Target: â‚¹' + p.target + '</div>' : '') + (p.implication ? '<div class="scanner-pattern-impl">' + escapeHtml(p.implication) + '</div>' : '') + '</div>';
         }
         html += '</div></div>';
     }
@@ -545,13 +550,13 @@ function renderPatternResults(data, resultsEl, statusEl) {
 
 function analyzeFromScanner(stockName) { stockInput.value = stockName; switchTab("stock-analyzer"); if (!isAnalyzing) handleAnalyze(); }
 
-// ── Active Trading / Volatile Scanner ──────────────────────────
+// â”€â”€ Active Trading / Volatile Scanner â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
 var isVolatileScanning = false;
 async function runVolatileScan(forceRefresh) {
     if (isVolatileScanning) return; isVolatileScanning = true;
     var scanBtn = document.getElementById("scanVolatileBtn"), refreshBtn = document.getElementById("refreshVolatileBtn");
     var statusEl = document.getElementById("volatileStatus"), resultsEl = document.getElementById("volatileResults");
-    if (scanBtn) { scanBtn.disabled = true; scanBtn.innerHTML = "⏳ Scanning..."; }
+    if (scanBtn) { scanBtn.disabled = true; scanBtn.innerHTML = "â³ Scanning..."; }
     if (refreshBtn) refreshBtn.disabled = true;
     if (statusEl) { statusEl.innerHTML = '<div class="scanner-progress"><div class="scanner-progress-bar"><div class="scanner-progress-fill"></div></div><span>Scanning for high volatility & volume stocks...</span></div>'; statusEl.style.display = "block"; }
     try {
@@ -560,8 +565,8 @@ async function runVolatileScan(forceRefresh) {
         var res = await fetch(url);
         if (!res.ok) { var error = await res.json().catch(function() { return { detail: "Scan failed" }; }); throw new Error(error.detail || "Error " + res.status); }
         renderVolatileResults(await res.json(), resultsEl, statusEl);
-    } catch (err) { if (statusEl) statusEl.innerHTML = '<div class="scanner-error">❌ ' + escapeHtml(err.message) + '</div>'; console.error(err); }
-    finally { isVolatileScanning = false; if (scanBtn) { scanBtn.disabled = false; scanBtn.innerHTML = "🔍 Scan Now"; } if (refreshBtn) refreshBtn.disabled = false; }
+    } catch (err) { if (statusEl) statusEl.innerHTML = '<div class="scanner-error">âŒ ' + escapeHtml(err.message) + '</div>'; console.error(err); }
+    finally { isVolatileScanning = false; if (scanBtn) { scanBtn.disabled = false; scanBtn.innerHTML = "ðŸ” Scan Now"; } if (refreshBtn) refreshBtn.disabled = false; }
 }
 
 function renderVolatileResults(data, resultsEl, statusEl) {
@@ -575,7 +580,7 @@ function renderVolatileResults(data, resultsEl, statusEl) {
     if (!data.results || data.results.length === 0) { resultsEl.innerHTML = '<div class="scanner-empty"><p>No high volatility stocks found.</p></div>'; return; }
     var html = "";
     for (var stock of data.results) {
-        var priceStr = stock.price ? "₹" + stock.price.toFixed(2) : "";
+        var priceStr = stock.price ? "â‚¹" + stock.price.toFixed(2) : "";
         var tickerDisplay = (stock.ticker || "").replace(".NS", "");
         var score = stock.volatility_score || 0;
         var scoreClass = score >= 70 ? "volatile-score-high" : score >= 50 ? "volatile-score-medium" : "volatile-score-low";
@@ -593,7 +598,7 @@ function renderVolatileResults(data, resultsEl, statusEl) {
         html += '<div class="volatile-stock-card"><div class="volatile-stock-header"><div class="volatile-stock-info"><span class="volatile-stock-name">' + escapeHtml(stock.name || tickerDisplay) + '</span><span class="volatile-stock-ticker">' + escapeHtml(tickerDisplay) + '</span>' + (priceStr ? '<span class="volatile-stock-price">' + priceStr + '</span>' : '') + '</div><div class="volatile-score"><span class="volatile-score-value ' + scoreClass + '">' + score.toFixed(0) + '</span><span class="volatile-score-label">Score</span></div></div>';
         html += '<div class="volatile-metrics"><div class="volatile-metric"><span class="metric-label">Monthly Vol</span><span class="metric-value">' + (stock.monthly_volatility || 0).toFixed(1) + '%</span></div><div class="volatile-metric"><span class="metric-label">ATR %</span><span class="metric-value">' + (stock.atr_pct || 0).toFixed(1) + '%</span></div><div class="volatile-metric"><span class="metric-label">Vol Ratio</span><span class="metric-value ' + ((stock.volume_ratio || 0) >= 1.5 ? 'high' : '') + '">' + (stock.volume_ratio || 0).toFixed(1) + 'x</span></div><div class="volatile-metric"><span class="metric-label">Price Range</span><span class="metric-value">' + (stock.price_range_pct || 0).toFixed(1) + '%</span></div><div class="volatile-metric"><span class="metric-label">Vol Spikes</span><span class="metric-value">' + (stock.volume_spike_days || 0) + ' days</span></div><div class="volatile-metric"><span class="metric-label">Avg Volume</span><span class="metric-value">' + formatVolume(stock.avg_daily_volume || 0) + '</span></div></div>';
         if (tagsHtml) html += '<div class="volatile-tags">' + tagsHtml + '</div>';
-        html += '<div class="volatile-card-footer"><span class="volatile-return ' + returnClass + '">1M: ' + returnStr + '</span><button class="volatile-analyze-btn" onclick="analyzeFromScanner(\'' + escapeHtml(stock.name || tickerDisplay) + '\')">Analyze →</button></div></div>';
+        html += '<div class="volatile-card-footer"><span class="volatile-return ' + returnClass + '">1M: ' + returnStr + '</span><button class="volatile-analyze-btn" onclick="analyzeFromScanner(\'' + escapeHtml(stock.name || tickerDisplay) + '\')">Analyze â†’</button></div></div>';
     }
     resultsEl.innerHTML = html;
 }
@@ -605,7 +610,7 @@ function formatVolume(vol) {
     return vol.toString();
 }
 
-// ── Developing Patterns Scanner ────────────────────────────────
+// â”€â”€ Developing Patterns Scanner â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
 var isDevScanning = false;
 async function runDevPatternScan(forceRefresh) {
     if (isDevScanning) return; isDevScanning = true;
@@ -666,7 +671,9 @@ function renderDevPatternResults(data, resultsEl, statusEl) {
         var dataStatus = stock.data_status === "live" ? '<span class="dev-data-live">\u25CF Live</span>' : '<span class="dev-data-delayed">\u25CF Delayed</span>';
         html += '<div class="dev-stock-card">';
         html += '<div class="dev-stock-header"><div class="dev-stock-info"><span class="dev-stock-name">' + escapeHtml(stock.name) + '</span><span class="dev-stock-ticker">' + escapeHtml(tickerDisplay) + '</span>' + (priceStr ? '<span class="dev-stock-price">' + priceStr + '</span>' : '') + dataStatus + '</div>';
-        html += '<button class="scanner-analyze-btn" onclick="analyzeFromScanner(\'' + escapeHtml(stock.name) + '\')">Analyze \u2192</button></div>';
+        html += '<div class="dev-stock-actions"><button class="chart-view-btn" onclick="openPatternChart(\'' + escapeHtml(stock.ticker) + '\', \'' + escapeHtml(stock.name) + '\', \'developing\')" title="View Chart">ðŸ"Š Chart</button>';
+        html += '<button class="chart-view-btn pattern-img-btn" onclick="openPatternImage(\'' + escapeHtml(stock.ticker) + '\', \'' + escapeHtml(stock.name) + '\', \'developing\')" title="Pattern Image">\uD83D\uDCF8 Image</button>';
+        html += '<button class="scanner-analyze-btn" onclick="analyzeFromScanner(\'' + escapeHtml(stock.name) + '\')">Analyze \u2192</button></div></div>';
         html += '<div class="dev-patterns-list">';
         for (var p of stock.patterns) {
             html += renderDevPatternCard(p);
@@ -738,4 +745,150 @@ function renderDevPatternCard(p) {
 
     html += '</div>';
     return html;
+}
+
+// ── Pattern Image Modal ──────────────────────────────────────────────
+var patternImageLoading = false;
+
+function openPatternImage(ticker, stockName, detector) {
+    if (patternImageLoading) return;
+    var modal = document.getElementById("patternImageModal");
+    if (!modal) return;
+    var titleEl = document.getElementById("patternImageTitle");
+    var bodyEl = document.getElementById("patternImageBody");
+    var tfSelect = document.getElementById("patternImageTimeframe");
+    var tf = tfSelect ? tfSelect.value : "1d";
+    titleEl.textContent = "\uD83D\uDCF8 " + stockName + " \u2014 Pattern Chart Image";
+    bodyEl.innerHTML = '<div class="chart-loading"><div class="chart-spinner"></div><span>Generating pattern chart image...</span></div>';
+    modal.classList.add("visible");
+    document.body.style.overflow = "hidden";
+    modal.dataset.ticker = ticker;
+    modal.dataset.stockName = stockName;
+    modal.dataset.detector = detector || "developing";
+    _fetchPatternImage(ticker, stockName, tf, detector || "developing");
+}
+
+function _fetchPatternImage(ticker, stockName, timeframe, detector) {
+    patternImageLoading = true;
+    var bodyEl = document.getElementById("patternImageBody");
+    var imgUrl = API_BASE + "/api/chart/pattern-image?ticker=" + encodeURIComponent(ticker) +
+        "&timeframe=" + encodeURIComponent(timeframe) + "&max_bars=80&detector=" + encodeURIComponent(detector);
+
+    // First check if patterns exist via the metadata endpoint
+    fetch(API_BASE + "/api/chart/pattern-image-all?ticker=" + encodeURIComponent(ticker) +
+        "&timeframe=" + encodeURIComponent(timeframe) + "&detector=" + encodeURIComponent(detector))
+        .then(function(res) {
+            if (!res.ok) return res.json().then(function(e) { throw new Error(e.detail || "Failed"); });
+            return res.json();
+        })
+        .then(function(data) {
+            patternImageLoading = false;
+            if (!data.patterns || data.patterns.length === 0) {
+                bodyEl.innerHTML = '<div class="chart-error">No patterns detected for ' + escapeHtml(stockName) + '</div>';
+                return;
+            }
+            _renderPatternImages(data, bodyEl, ticker, timeframe, detector);
+        })
+        .catch(function(err) {
+            patternImageLoading = false;
+            bodyEl.innerHTML = '<div class="chart-error">\u274C ' + escapeHtml(err.message) + '</div>';
+        });
+}
+
+function _renderPatternImages(data, bodyEl, ticker, timeframe, detector) {
+    var html = '<div class="pattern-images-container">';
+    html += '<div class="pattern-images-header"><span>Found <strong>' + data.pattern_count + '</strong> pattern(s) for ' + escapeHtml(ticker.replace(".NS", "")) + '</span><span class="pattern-img-price">CMP: \u20B9' + (data.current_price || "N/A") + '</span></div>';
+
+    for (var i = 0; i < data.patterns.length; i++) {
+        var pat = data.patterns[i];
+        var typeClass = pat.type === "bullish" ? "bullish" : pat.type === "bearish" ? "bearish" : "neutral";
+        var emoji = pat.type === "bullish" ? "\uD83D\uDFE2" : pat.type === "bearish" ? "\uD83D\uDD34" : "\uD83D\uDFE1";
+        var confBadge = pat.structure_confidence ? '<span class="pattern-img-conf">' + pat.structure_confidence + '%</span>' : '';
+        var stageBadge = pat.stage ? '<span class="pattern-img-stage">' + escapeHtml(pat.stage) + '</span>' : '';
+
+        html += '<div class="pattern-image-card ' + typeClass + '">';
+        html += '<div class="pattern-image-info">';
+        html += '<span class="pattern-image-name">' + emoji + ' ' + escapeHtml(pat.pattern) + '</span>';
+        html += stageBadge + confBadge;
+        html += '</div>';
+        html += '<div class="pattern-image-desc">' + escapeHtml(pat.description || "") + '</div>';
+
+        // The actual image
+        var imgSrc = API_BASE + pat.image_url;
+        html += '<div class="pattern-image-wrapper" id="patImgWrap' + i + '">';
+        html += '<div class="chart-loading pattern-img-loading"><div class="chart-spinner"></div><span>Rendering...</span></div>';
+        html += '<img class="pattern-chart-img" data-src="' + escapeHtml(imgSrc) + '" data-index="' + i + '" alt="' + escapeHtml(pat.pattern) + ' chart" style="display:none;" />';
+        html += '</div>';
+
+        // Target/SL info
+        if (pat.target || pat.invalidation) {
+            html += '<div class="pattern-image-levels">';
+            if (pat.target) html += '<span class="pattern-img-target ' + typeClass + '">Target: \u20B9' + pat.target + '</span>';
+            if (pat.invalidation) html += '<span class="pattern-img-sl">SL: \u20B9' + pat.invalidation + '</span>';
+            html += '</div>';
+        }
+        html += '</div>';
+    }
+    html += '</div>';
+    bodyEl.innerHTML = html;
+
+    // Lazy-load images
+    var imgs = bodyEl.querySelectorAll("img.pattern-chart-img");
+    for (var j = 0; j < imgs.length; j++) {
+        (function(img) {
+            var src = img.getAttribute("data-src");
+            var idx = img.getAttribute("data-index");
+            var wrap = document.getElementById("patImgWrap" + idx);
+            var tempImg = new Image();
+            tempImg.onload = function() {
+                img.src = src;
+                img.style.display = "block";
+                var loader = wrap ? wrap.querySelector(".pattern-img-loading") : null;
+                if (loader) loader.style.display = "none";
+            };
+            tempImg.onerror = function() {
+                var loader = wrap ? wrap.querySelector(".pattern-img-loading") : null;
+                if (loader) loader.innerHTML = '<span class="chart-error">\u274C Failed to render image</span>';
+            };
+            tempImg.src = src;
+        })(imgs[j]);
+    }
+}
+
+function changePatternImageTimeframe() {
+    var modal = document.getElementById("patternImageModal");
+    if (!modal) return;
+    var tfSelect = document.getElementById("patternImageTimeframe");
+    var tf = tfSelect ? tfSelect.value : "1d";
+    var ticker = modal.dataset.ticker;
+    var stockName = modal.dataset.stockName;
+    var detector = modal.dataset.detector;
+    if (!ticker) return;
+    var bodyEl = document.getElementById("patternImageBody");
+    bodyEl.innerHTML = '<div class="chart-loading"><div class="chart-spinner"></div><span>Generating ' + tf + ' pattern image...</span></div>';
+    _fetchPatternImage(ticker, stockName, tf, detector);
+}
+
+function closePatternImageModal() {
+    var modal = document.getElementById("patternImageModal");
+    if (modal) { modal.classList.remove("visible"); document.body.style.overflow = ""; }
+}
+
+function downloadPatternImage() {
+    var imgs = document.querySelectorAll("#patternImageBody img.pattern-chart-img");
+    if (imgs.length === 0) return;
+    // Download the first visible image
+    for (var i = 0; i < imgs.length; i++) {
+        if (imgs[i].style.display !== "none" && imgs[i].src) {
+            var a = document.createElement("a");
+            a.href = imgs[i].src;
+            var modal = document.getElementById("patternImageModal");
+            var ticker = modal ? (modal.dataset.ticker || "pattern").replace(".NS", "") : "pattern";
+            a.download = ticker + "_pattern_chart.png";
+            document.body.appendChild(a);
+            a.click();
+            document.body.removeChild(a);
+            return;
+        }
+    }
 }
