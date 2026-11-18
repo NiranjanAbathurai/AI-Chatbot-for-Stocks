@@ -72,7 +72,7 @@ if frontend_dir.exists():
         """Serve service worker from root path (scope requirement)."""
         return FileResponse(
             str(frontend_dir / "sw.js"),
-            media_type="application/javascript",
+            media_type="application/javascript; charset=utf-8",
         )
 
     app.mount("/static", StaticFiles(directory=str(frontend_dir)), name="static")
@@ -80,7 +80,10 @@ if frontend_dir.exists():
     @app.get("/")
     async def serve_frontend():
         """Serve the frontend index.html."""
-        return FileResponse(str(frontend_dir / "index.html"))
+        return FileResponse(
+            str(frontend_dir / "index.html"),
+            media_type="text/html; charset=utf-8",
+        )
 else:
     @app.get("/")
     async def root():
@@ -109,11 +112,13 @@ scheduler = None
 
 
 def _setup_scheduler():
-    """Set up APScheduler for periodic alert scans."""
+    """Set up APScheduler for periodic alert scans and model discovery."""
     global scheduler
     try:
         from apscheduler.schedulers.asyncio import AsyncIOScheduler
+        from apscheduler.triggers.cron import CronTrigger
         from services.alert_service import run_alert_scan
+        from services.model_discovery import run_model_discovery
 
         scheduler = AsyncIOScheduler()
 
@@ -127,13 +132,23 @@ def _setup_scheduler():
             replace_existing=True,
         )
 
+        # Schedule model discovery daily at midnight IST (18:30 UTC)
+        scheduler.add_job(
+            run_model_discovery,
+            CronTrigger(hour=0, minute=0, timezone="Asia/Kolkata"),
+            id="model_discovery",
+            name="Daily AI Model Discovery",
+            replace_existing=True,
+        )
+
         scheduler.start()
         logger.info(
-            f"Background scheduler started — alert scan every "
-            f"{settings.ALERT_SCAN_INTERVAL_HOURS} hours"
+            f"Background scheduler started - alert scan every "
+            f"{settings.ALERT_SCAN_INTERVAL_HOURS} hours, "
+            f"model discovery daily at 00:00 IST"
         )
     except ImportError:
-        logger.warning("APScheduler not installed — background alerts disabled")
+        logger.warning("APScheduler not installed — background tasks disabled")
     except Exception as e:
         logger.error(f"Failed to start scheduler: {e}")
 
@@ -143,6 +158,7 @@ def _setup_scheduler():
 async def startup_event():
     """Log startup information and start background tasks."""
     from services.ai_service import ai_service
+    from services.model_discovery import run_model_discovery
 
     logger.info("=" * 60)
     logger.info("Stock Debate Chat API starting up...")
@@ -154,7 +170,13 @@ async def startup_event():
             "Please set at least one API key in .env file."
         )
 
-    # Start background scheduler for alerts
+    # Run model discovery on startup (non-blocking)
+    try:
+        await run_model_discovery()
+    except Exception as e:
+        logger.warning(f"Startup model discovery failed (will retry at midnight): {e}")
+
+    # Start background scheduler for alerts + daily model discovery
     _setup_scheduler()
 
     logger.info(f"API docs: http://localhost:{settings.BACKEND_PORT}/docs")

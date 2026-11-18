@@ -23,10 +23,10 @@ logger = logging.getLogger(__name__)
 # Updated Nov 2026 — removed potentially deprecated models.
 GROQ_FALLBACK_MODELS = [
     "llama-3.3-70b-versatile",
+    "llama-3.2-90b-vision-preview",
+    "llama-3.2-11b-vision-preview",
+    "llama-3.1-70b-versatile",
     "llama-3.1-8b-instant",
-    "llama3-70b-8192",
-    "llama3-8b-8192",
-    "mixtral-8x7b-32768",
 ]
 
 
@@ -36,13 +36,19 @@ def _is_model_not_found(err: Exception) -> bool:
     return any(
         kw in msg
         for kw in ("not found", "not exist", "deprecated", "decommissioned", "unavailable", "invalid model")
-    ) or getattr(err, "status_code", None) == 404
+    ) or getattr(err, "status_code", None) in (400, 404)
 
 
 def _build_model_list() -> list[str]:
-    """Build the model list, putting any env-var override first."""
+    """Build the model list from auto-discovery cache, falling back to hardcoded list."""
+    from services.model_discovery import get_cached_models
+
     override = os.getenv("GROQ_MODEL", "").strip()
-    models = list(GROQ_FALLBACK_MODELS)
+
+    # Use discovered models if available, otherwise fall back to hardcoded
+    discovered = get_cached_models("groq")
+    models = list(discovered) if discovered else list(GROQ_FALLBACK_MODELS)
+
     if override:
         if override in models:
             models.remove(override)

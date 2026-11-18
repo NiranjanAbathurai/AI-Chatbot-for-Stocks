@@ -160,7 +160,11 @@
                             maxlength="100"
                         >
                         <div class="stock-dropdown" id="stockDropdown">
-                            <div class="dropdown-header">
+                            <div class="dropdown-filter-toggle" id="filterToggle" onclick="toggleCategoryFilter()">
+                                <span class="filter-toggle-label">🏷️ Filter by Category <span class="active-filter-badge" id="activeFilterBadge" style="display:none;">All</span></span>
+                                <span class="filter-toggle-arrow" id="filterArrow">▼</span>
+                            </div>
+                            <div class="dropdown-header" id="categoryHeader">
                                 <div class="category-pills" id="categoryPills">
                                     <button class="cat-pill active" data-category="all">All</button>
                                     <!-- Category pills populated dynamically -->

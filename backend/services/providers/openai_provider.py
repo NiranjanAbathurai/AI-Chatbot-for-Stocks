@@ -39,9 +39,15 @@ def _is_model_not_found(err: Exception) -> bool:
 
 
 def _build_model_list() -> list[str]:
-    """Build the model list, putting any env-var override first."""
+    """Build the model list from auto-discovery cache, falling back to hardcoded list."""
+    from services.model_discovery import get_cached_models
+
     override = os.getenv("OPENAI_MODEL", "").strip()
-    models = list(OPENAI_FALLBACK_MODELS)
+
+    # Use discovered models if available, otherwise fall back to hardcoded
+    discovered = get_cached_models("openai")
+    models = list(discovered) if discovered else list(OPENAI_FALLBACK_MODELS)
+
     if override:
         if override in models:
             models.remove(override)

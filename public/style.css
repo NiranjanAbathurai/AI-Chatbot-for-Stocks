@@ -107,15 +107,28 @@ body { font-family: 'Segoe UI', -apple-system, BlinkMacSystemFont, 'Roboto', san
 .stock-search-wrapper input:disabled { opacity: 0.5; cursor: not-allowed; }
 
 /* ── Stock Dropdown — Opens Downward from Input ── */
-.stock-dropdown { position: absolute; top: 100%; left: 0; right: 0; background: var(--bg-secondary); border: 1px solid var(--bg-tertiary); border-radius: 0 0 8px 8px; max-height: 320px; display: none; flex-direction: column; z-index: 200; box-shadow: 0 8px 24px rgba(0,0,0,0.4); }
+.stock-dropdown { position: absolute; top: 100%; left: 0; right: 0; background: var(--bg-secondary); border: 1px solid var(--bg-tertiary); border-radius: 0 0 8px 8px; max-height: 380px; display: none; flex-direction: column; z-index: 200; box-shadow: 0 8px 24px rgba(0,0,0,0.4); }
 .stock-dropdown.visible { display: flex; }
-.dropdown-header { padding: 6px 10px; border-bottom: 1px solid var(--bg-tertiary); }
+
+/* ── Category Filter Toggle ── */
+.dropdown-filter-toggle { display: flex; align-items: center; justify-content: space-between; padding: 6px 10px; border-bottom: 1px solid var(--bg-tertiary); cursor: pointer; user-select: none; }
+.dropdown-filter-toggle:hover { background: rgba(255,255,255,0.02); }
+.filter-toggle-label { font-size: 0.7rem; color: var(--text-secondary); font-weight: 600; display: flex; align-items: center; gap: 4px; }
+.filter-toggle-arrow { font-size: 0.6rem; transition: transform 0.2s; }
+.filter-toggle-arrow.expanded { transform: rotate(180deg); }
+.active-filter-badge { font-size: 0.6rem; padding: 1px 6px; border-radius: 8px; background: rgba(0,210,211,0.15); color: var(--accent-cyan); font-weight: 600; margin-left: 6px; }
+
+/* ── Category Pills (collapsible) ── */
+.dropdown-header { padding: 0; overflow: hidden; max-height: 0; transition: max-height 0.25s ease, padding 0.25s ease; border-bottom: none; }
+.dropdown-header.expanded { max-height: 120px; padding: 6px 10px; border-bottom: 1px solid var(--bg-tertiary); overflow-y: auto; }
 .category-pills { display: flex; gap: 4px; flex-wrap: wrap; }
 .cat-pill { padding: 3px 10px; background: var(--bg-tertiary); border: 1px solid transparent; border-radius: 12px; color: var(--text-secondary); font-size: 0.68rem; cursor: pointer; transition: all 0.2s; white-space: nowrap; min-height: 28px; display: flex; align-items: center; }
 .cat-pill:hover { color: var(--text-primary); background: var(--input-bg); }
 .cat-pill.active { background: rgba(0,210,211,0.15); color: var(--accent-cyan); border-color: var(--accent-cyan); }
-.dropdown-list { flex: 1; overflow-y: auto; max-height: 220px; -webkit-overflow-scrolling: touch; }
-.dropdown-category-header { padding: 4px 12px; font-size: 0.65rem; font-weight: 700; color: var(--text-muted); text-transform: uppercase; letter-spacing: 0.5px; background: var(--bg-primary); position: sticky; top: 0; }
+
+/* ── Stock List (always visible, takes priority) ── */
+.dropdown-list { flex: 1; overflow-y: auto; max-height: 280px; -webkit-overflow-scrolling: touch; }
+.dropdown-category-header { padding: 4px 12px; font-size: 0.65rem; font-weight: 700; color: var(--text-muted); text-transform: uppercase; letter-spacing: 0.5px; background: var(--bg-primary); position: sticky; top: 0; z-index: 1; }
 .dropdown-item { display: flex; justify-content: space-between; align-items: center; padding: 8px 12px; cursor: pointer; transition: background 0.15s; min-height: 40px; }
 .dropdown-item:hover, .dropdown-item.highlighted { background: var(--bg-tertiary); }
 .dropdown-item-name { font-size: 0.8rem; color: var(--text-primary); }
@@ -403,8 +416,9 @@ body { font-family: 'Segoe UI', -apple-system, BlinkMacSystemFont, 'Roboto', san
     .stock-search-wrapper { flex: 1 1 100%; }
     .analysis-mode-select { min-width: unset; flex: 1; }
     #analyzeBtn { flex: 0 0 auto; }
-    .stock-dropdown { max-height: 260px; }
-    .dropdown-list { max-height: 170px; }
+    .stock-dropdown { max-height: 320px; }
+    .dropdown-list { max-height: 220px; }
+    .dropdown-header.expanded { max-height: 80px; }
     .scanner-controls, .active-trading-controls { flex-direction: column; align-items: stretch; }
     .scanner-actions { justify-content: flex-end; }
     .stock-data-grid { grid-template-columns: repeat(2, 1fr); }

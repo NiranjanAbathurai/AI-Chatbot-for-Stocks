@@ -13,6 +13,7 @@ import Anthropic from "@anthropic-ai/sdk";
 import { GoogleGenAI } from "@google/genai";
 import Groq from "groq-sdk";
 import OpenAI from "openai";
+import { getModels } from "./model-discovery.mjs";
 
 // ── SSL Fix for corporate proxies ──────────────────────────────
 // Corporate proxies (Zscaler) inject self-signed certificates.
@@ -67,18 +68,18 @@ const ANTHROPIC_FALLBACK_MODELS = ANTHROPIC_IS_GATEWAY
   : ANTHROPIC_DIRECT_MODELS;
 
 const GEMINI_FALLBACK_MODELS = [
+  "gemini-3.8-flash",
+  "gemini-3.5-flash-lite",
+  "gemini-2.5-flash",
   "gemini-2.0-flash",
-  "gemini-2.0-flash-lite",
-  "gemini-1.5-flash",
-  "gemini-1.5-flash-8b",
 ];
 
 const GROQ_FALLBACK_MODELS = [
   "llama-3.3-70b-versatile",
+  "llama-3.2-90b-vision-preview",
+  "llama-3.2-11b-vision-preview",
+  "llama-3.1-70b-versatile",
   "llama-3.1-8b-instant",
-  "llama3-70b-8192",
-  "llama3-8b-8192",
-  "mixtral-8x7b-32768",
 ];
 
 const OPENAI_FALLBACK_MODELS = [
@@ -90,10 +91,20 @@ const OPENAI_FALLBACK_MODELS = [
 
 /**
  * Build model list with optional env-var override placed first.
+ * Uses auto-discovered models if available, falls back to hardcoded list.
  */
-function buildModelList(fallbackModels, envVar) {
+async function buildModelList(fallbackModels, envVar, provider) {
   const override = (process.env[envVar] || "").trim();
-  const models = [...fallbackModels];
+
+  // Try auto-discovered models first
+  let discovered = [];
+  try {
+    discovered = await getModels(provider);
+  } catch (e) {
+    // Discovery failed — use fallbacks
+  }
+
+  const models = discovered.length > 0 ? [...discovered] : [...fallbackModels];
   if (override) {
     const idx = models.indexOf(override);
     if (idx !== -1) models.splice(idx, 1);
@@ -134,7 +145,7 @@ async function callAnthropic(systemPrompt, userPrompt) {
     clientOpts.apiKey = ANTHROPIC_API_KEY;
   }
   const client = new Anthropic(clientOpts);
-  const models = buildModelList(ANTHROPIC_FALLBACK_MODELS, "ANTHROPIC_MODEL");
+  const models = await buildModelList(ANTHROPIC_FALLBACK_MODELS, "ANTHROPIC_MODEL", "anthropic");
 
   for (let i = 0; i < models.length; i++) {
     const model = models[i];
@@ -173,7 +184,7 @@ async function callGemini(systemPrompt, userPrompt) {
   if (!GEMINI_API_KEY) throw new Error("Gemini API key not configured");
 
   const client = new GoogleGenAI({ apiKey: GEMINI_API_KEY });
-  const models = buildModelList(GEMINI_FALLBACK_MODELS, "GEMINI_MODEL");
+  const models = await buildModelList(GEMINI_FALLBACK_MODELS, "GEMINI_MODEL", "gemini");
 
   for (let i = 0; i < models.length; i++) {
     const model = models[i];
@@ -210,7 +221,7 @@ async function callGroq(systemPrompt, userPrompt) {
   if (!GROQ_API_KEY) throw new Error("Groq API key not configured");
 
   const client = new Groq({ apiKey: GROQ_API_KEY });
-  const models = buildModelList(GROQ_FALLBACK_MODELS, "GROQ_MODEL");
+  const models = await buildModelList(GROQ_FALLBACK_MODELS, "GROQ_MODEL", "groq");
 
   for (let i = 0; i < models.length; i++) {
     const model = models[i];
@@ -247,7 +258,7 @@ async function callOpenAI(systemPrompt, userPrompt) {
   if (!OPENAI_API_KEY) throw new Error("OpenAI API key not configured");
 
   const client = new OpenAI({ apiKey: OPENAI_API_KEY });
-  const models = buildModelList(OPENAI_FALLBACK_MODELS, "OPENAI_MODEL");
+  const models = await buildModelList(OPENAI_FALLBACK_MODELS, "OPENAI_MODEL", "openai");
 
   for (let i = 0; i < models.length; i++) {
     const model = models[i];

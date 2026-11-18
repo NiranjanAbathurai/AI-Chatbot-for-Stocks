@@ -22,10 +22,10 @@ logger = logging.getLogger(__name__)
 # When Google deprecates a model, the next one is tried automatically.
 # Updated Nov 2026 — older preview models removed.
 GEMINI_FALLBACK_MODELS = [
+    "gemini-3.8-flash",
+    "gemini-3.5-flash-lite",
+    "gemini-2.5-flash",
     "gemini-2.0-flash",
-    "gemini-2.0-flash-lite",
-    "gemini-1.5-flash",
-    "gemini-1.5-flash-8b",
 ]
 
 
@@ -39,9 +39,15 @@ def _is_model_not_found(err: Exception) -> bool:
 
 
 def _build_model_list() -> list[str]:
-    """Build the model list, putting any env-var override first."""
+    """Build the model list from auto-discovery cache, falling back to hardcoded list."""
+    from services.model_discovery import get_cached_models
+
     override = os.getenv("GEMINI_MODEL", "").strip()
-    models = list(GEMINI_FALLBACK_MODELS)
+
+    # Use discovered models if available, otherwise fall back to hardcoded
+    discovered = get_cached_models("gemini")
+    models = list(discovered) if discovered else list(GEMINI_FALLBACK_MODELS)
+
     if override:
         if override in models:
             models.remove(override)
