@@ -9,6 +9,12 @@
 # (export const config = { path: "/api/..." }) in each function file.
 # Functions v2 path config takes priority over redirect rules.
 
+# Rewrite /static/* to /* so the same HTML works locally (FastAPI mounts at /static) and on Netlify
+[[redirects]]
+  from = "/static/*"
+  to = "/:splat"
+  status = 200
+
 # SPA fallback — serve index.html for unmatched routes
 [[redirects]]
   from = "/*"
