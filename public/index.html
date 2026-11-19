@@ -36,6 +36,7 @@
         <nav class="tab-nav">
             <button class="tab-btn active" data-tab="pattern-scanner" onclick="switchTab('pattern-scanner')">📐 Pattern Scanner</button>
             <button class="tab-btn" data-tab="developing-patterns" onclick="switchTab('developing-patterns')">🔬 Developing Patterns</button>
+            <button class="tab-btn" data-tab="swing-opportunities" onclick="switchTab('swing-opportunities')">🎯 Swing Opportunities</button>
             <button class="tab-btn" data-tab="stock-analyzer" onclick="switchTab('stock-analyzer')">📊 Stock Analyzer</button>
             <button class="tab-btn" data-tab="active-trading" onclick="switchTab('active-trading')">📈 Active Trading</button>
         </nav>
@@ -139,6 +140,89 @@
                         <p>Click <strong>"Scan Now"</strong> to detect developing chart patterns.</p>
                         <p class="scanner-hint">Identifies patterns at all stages: Early Formation → Developing → Almost Complete → Breakout Pending → Confirmed.</p>
                         <p class="scanner-hint">Includes confidence scores, key levels, targets, and invalidation prices.</p>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <!-- ═══════════════════════════════════════════════════════ -->
+        <!-- Tab: Swing Opportunities (Batch Scanner) -->
+        <!-- ═══════════════════════════════════════════════════════ -->
+        <div class="tab-content hidden" id="swingOpportunitiesTab">
+            <div class="swing-tab-content">
+                <div class="scanner-header">
+                    <h3>🎯 Swing Trading Opportunities</h3>
+                    <p class="scanner-subtitle">Batch scan all NIFTY stocks — ranked by swing trading score with entry/SL/target levels</p>
+                </div>
+
+                <!-- Scan Status Banner -->
+                <div class="swing-scan-status" id="swingScanStatus">
+                    <div class="swing-status-info">
+                        <span class="swing-status-icon">📋</span>
+                        <span class="swing-status-text" id="swingStatusText">No scan results yet. Click "Run Batch Scan" to analyze all stocks.</span>
+                    </div>
+                    <div class="swing-status-meta" id="swingStatusMeta"></div>
+                </div>
+
+                <!-- Controls -->
+                <div class="scanner-controls swing-controls">
+                    <div class="scanner-filters">
+                        <select id="swingDirectionFilter" class="scanner-select">
+                            <option value="">All Directions</option>
+                            <option value="LONG">🟢 LONG Only</option>
+                            <option value="SHORT">🔴 SHORT Only</option>
+                        </select>
+                        <select id="swingConfidenceFilter" class="scanner-select">
+                            <option value="">All Confidence</option>
+                            <option value="High">🔥 High Conviction</option>
+                            <option value="Medium">⚡ Medium Conviction</option>
+                        </select>
+                        <select id="swingSortBy" class="scanner-select">
+                            <option value="swing_score">Sort: Swing Score</option>
+                            <option value="risk_reward">Sort: Risk/Reward</option>
+                            <option value="1m_return">Sort: 1M Return</option>
+                            <option value="atr_pct">Sort: Volatility (ATR%)</option>
+                            <option value="volume_ratio">Sort: Volume Ratio</option>
+                        </select>
+                        <input type="number" id="swingMinScore" class="scanner-select" placeholder="Min Score" min="0" max="100" step="5" style="width:100px;">
+                    </div>
+                    <div class="scanner-actions">
+                        <button class="scanner-scan-btn swing-scan-btn" id="swingScanBtn" onclick="runBatchSwingScan(false)">
+                            🎯 Run Batch Scan
+                        </button>
+                        <button class="scanner-refresh-btn" id="swingRefreshBtn" onclick="runBatchSwingScan(true)" title="Force fresh scan (re-fetches all data)">
+                            🔄
+                        </button>
+                    </div>
+                </div>
+
+                <!-- Summary Cards -->
+                <div class="swing-summary" id="swingSummary" style="display:none;">
+                    <div class="swing-summary-card swing-summary-total">
+                        <span class="swing-summary-num" id="swingSummaryTotal">0</span>
+                        <span class="swing-summary-label">Stocks Scanned</span>
+                    </div>
+                    <div class="swing-summary-card swing-summary-high">
+                        <span class="swing-summary-num" id="swingSummaryHigh">0</span>
+                        <span class="swing-summary-label">🔥 High Conviction</span>
+                    </div>
+                    <div class="swing-summary-card swing-summary-long">
+                        <span class="swing-summary-num" id="swingSummaryLong">0</span>
+                        <span class="swing-summary-label">🟢 Long Setups</span>
+                    </div>
+                    <div class="swing-summary-card swing-summary-short">
+                        <span class="swing-summary-num" id="swingSummaryShort">0</span>
+                        <span class="swing-summary-label">🔴 Short Setups</span>
+                    </div>
+                </div>
+
+                <!-- Results -->
+                <div class="swing-results" id="swingResults">
+                    <div class="scanner-empty">
+                        <p>Click <strong>"Run Batch Scan"</strong> to scan all NIFTY stocks for swing trading opportunities.</p>
+                        <p class="scanner-hint">Analyzes chart patterns, RSI, MACD, Bollinger Bands, support/resistance, volume, and trend alignment.</p>
+                        <p class="scanner-hint">⏰ Auto-runs daily at <strong>4:00 PM IST</strong> after market close.</p>
+                        <p class="scanner-hint">First scan takes 1-3 minutes. Results are cached and persist across restarts.</p>
                     </div>
                 </div>
             </div>

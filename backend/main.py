@@ -1,6 +1,6 @@
 """FastAPI application entry point with CORS, static files, background scheduler, and chart API."""
 
-import ssl_fix 
+import ssl_fix
 
 import logging
 import sys
@@ -12,7 +12,7 @@ from fastapi.staticfiles import StaticFiles
 from fastapi.responses import FileResponse
 
 from config import settings
-from routers import debate, screener, alerts, watchlist, developing_patterns, chart
+from routers import debate, screener, alerts, watchlist, developing_patterns, chart, batch_scanner
 
 # ── Logging Setup ───────────────────────────────────────────────
 logging.basicConfig(
@@ -54,6 +54,9 @@ app.include_router(developing_patterns.router)
 
 # Phase 5: Chart Data with Pattern Drawings
 app.include_router(chart.router)
+
+# Phase 6: Batch Swing Trading Scanner
+app.include_router(batch_scanner.router)
 
 # ── Serve Frontend Static Files ─────────────────────────────────
 frontend_dir = Path(__file__).parent.parent / "frontend"
@@ -112,13 +115,14 @@ scheduler = None
 
 
 def _setup_scheduler():
-    """Set up APScheduler for periodic alert scans and model discovery."""
+    """Set up APScheduler for periodic alert scans, model discovery, and batch swing scan."""
     global scheduler
     try:
         from apscheduler.schedulers.asyncio import AsyncIOScheduler
         from apscheduler.triggers.cron import CronTrigger
         from services.alert_service import run_alert_scan
         from services.model_discovery import run_model_discovery
+        from services.batch_scanner_service import run_scheduled_batch_scan
 
         scheduler = AsyncIOScheduler()
 
@@ -141,11 +145,21 @@ def _setup_scheduler():
             replace_existing=True,
         )
 
+        # Schedule batch swing scan daily at 4:00 PM IST (after market close)
+        scheduler.add_job(
+            run_scheduled_batch_scan,
+            CronTrigger(hour=16, minute=0, timezone="Asia/Kolkata"),
+            id="batch_swing_scan",
+            name="Daily Batch Swing Trading Scan (4 PM IST)",
+            replace_existing=True,
+        )
+
         scheduler.start()
         logger.info(
             f"Background scheduler started - alert scan every "
             f"{settings.ALERT_SCAN_INTERVAL_HOURS} hours, "
-            f"model discovery daily at 00:00 IST"
+            f"model discovery daily at 00:00 IST, "
+            f"batch swing scan daily at 16:00 IST"
         )
     except ImportError:
         logger.warning("APScheduler not installed — background tasks disabled")

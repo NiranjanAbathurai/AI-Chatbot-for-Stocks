@@ -43,9 +43,11 @@ function switchTab(tabId) {
     document.querySelectorAll(".tab-btn").forEach(b => b.classList.toggle("active", b.dataset.tab === tabId));
     document.getElementById("patternScannerTab").classList.toggle("hidden", tabId !== "pattern-scanner");
     document.getElementById("developingPatternsTab").classList.toggle("hidden", tabId !== "developing-patterns");
+    document.getElementById("swingOpportunitiesTab").classList.toggle("hidden", tabId !== "swing-opportunities");
     document.getElementById("stockAnalyzerTab").classList.toggle("hidden", tabId !== "stock-analyzer");
     document.getElementById("activeTradingTab").classList.toggle("hidden", tabId !== "active-trading");
     if (tabId === "stock-analyzer" && stockInput && !isAnalyzing) setTimeout(() => stockInput.focus(), 100);
+    if (tabId === "swing-opportunities") checkSwingScanStatus();
 }
 
 // \u2500\u2500 Health Check \u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500
@@ -920,3 +922,318 @@ function downloadPatternImage() {
         }
     }
 }
+
+// ══════════════════════════════════════════════════════════════════
+// 🎯 Swing Opportunities — Batch Scanner
+// ══════════════════════════════════════════════════════════════════
+
+var swingScanRunning = false;
+
+async function checkSwingScanStatus() {
+    try {
+        var res = await fetch(API_BASE + "/api/batch-scanner/status");
+        var data = await res.json();
+        var statusText = document.getElementById("swingStatusText");
+        var statusMeta = document.getElementById("swingStatusMeta");
+
+        if (data.in_progress) {
+            statusText.textContent = "⏳ Batch scan in progress... Please wait.";
+            statusMeta.textContent = "";
+            return;
+        }
+
+        if (data.has_results) {
+            statusText.textContent = "✅ Last scan: " + (data.last_scan_date || "") + " at " + (data.last_scan_display || "");
+            var summary = data.summary || {};
+            statusMeta.innerHTML = '<span class="swing-meta-item">📊 ' + (data.stocks_scanned || 0) + ' scanned</span>' +
+                '<span class="swing-meta-item">🔥 ' + (summary.high_conviction_count || 0) + ' high conviction</span>' +
+                '<span class="swing-meta-item">🟢 ' + (summary.long_count || 0) + ' long</span>' +
+                '<span class="swing-meta-item">🔴 ' + (summary.short_count || 0) + ' short</span>';
+
+            // Auto-load results if we have them
+            loadSwingResults();
+        } else {
+            statusText.textContent = "📋 No scan results yet. Click \"Run Batch Scan\" to analyze all stocks.";
+            statusMeta.textContent = "";
+        }
+    } catch (err) {
+        console.error("Failed to check swing scan status:", err);
+    }
+}
+
+async function runBatchSwingScan(forceRefresh) {
+    if (swingScanRunning) return;
+    swingScanRunning = true;
+
+    var scanBtn = document.getElementById("swingScanBtn");
+    var refreshBtn = document.getElementById("swingRefreshBtn");
+    var statusText = document.getElementById("swingStatusText");
+    var statusMeta = document.getElementById("swingStatusMeta");
+    var resultsEl = document.getElementById("swingResults");
+
+    scanBtn.disabled = true;
+    refreshBtn.disabled = true;
+    scanBtn.innerHTML = "⏳ Scanning...";
+    statusText.textContent = "⏳ Scanning all stocks... This takes 1-3 minutes. Please wait.";
+    statusMeta.textContent = "";
+    resultsEl.innerHTML = '<div class="swing-loading"><div class="chart-spinner"></div><span>Analyzing all NIFTY stocks with full technical analysis...</span></div>';
+
+    try {
+        var url = API_BASE + "/api/batch-scanner/scan?refresh=" + (forceRefresh ? "true" : "false");
+        var minScore = document.getElementById("swingMinScore");
+        if (minScore && minScore.value) url += "&min_score=" + minScore.value;
+        var direction = document.getElementById("swingDirectionFilter");
+        if (direction && direction.value) url += "&direction=" + direction.value;
+
+        var res = await fetch(url);
+        var data = await res.json();
+
+        if (data.status === "in_progress") {
+            statusText.textContent = "⏳ A scan is already running. Please wait 1-3 minutes.";
+            resultsEl.innerHTML = '<div class="swing-loading"><div class="chart-spinner"></div><span>Scan in progress...</span></div>';
+            // Poll for completion
+            setTimeout(function() { swingScanRunning = false; checkSwingScanStatus(); }, 10000);
+            scanBtn.disabled = false;
+            refreshBtn.disabled = false;
+            scanBtn.innerHTML = "🎯 Run Batch Scan";
+            return;
+        }
+
+        if (!res.ok) {
+            throw new Error(data.detail || "Scan failed");
+        }
+
+        statusText.textContent = "✅ Scan complete: " + (data.scan_date || "") + " at " + (data.scan_time_display || "") +
+            (data.cached ? " (cached)" : " (fresh)") +
+            " — took " + (data.scan_duration_seconds || "?") + "s";
+
+        var summary = data.summary || {};
+        statusMeta.innerHTML = '<span class="swing-meta-item">📊 ' + (data.stocks_scanned || 0) + ' scanned</span>' +
+            '<span class="swing-meta-item">🔥 ' + (summary.high_conviction_count || 0) + ' high conviction</span>' +
+            '<span class="swing-meta-item">🟢 ' + (summary.long_count || 0) + ' long</span>' +
+            '<span class="swing-meta-item">🔴 ' + (summary.short_count || 0) + ' short</span>';
+
+        // Show summary cards
+        var summaryEl = document.getElementById("swingSummary");
+        if (summaryEl) {
+            summaryEl.style.display = "grid";
+            document.getElementById("swingSummaryTotal").textContent = data.stocks_scanned || 0;
+            document.getElementById("swingSummaryHigh").textContent = summary.high_conviction_count || 0;
+            document.getElementById("swingSummaryLong").textContent = summary.long_count || 0;
+            document.getElementById("swingSummaryShort").textContent = summary.short_count || 0;
+        }
+
+        renderSwingResults(data);
+
+    } catch (err) {
+        statusText.textContent = "❌ Scan failed: " + err.message;
+        resultsEl.innerHTML = '<div class="scanner-empty"><p>❌ ' + escapeHtml(err.message) + '</p></div>';
+    }
+
+    swingScanRunning = false;
+    scanBtn.disabled = false;
+    refreshBtn.disabled = false;
+    scanBtn.innerHTML = "🎯 Run Batch Scan";
+}
+
+async function loadSwingResults() {
+    var resultsEl = document.getElementById("swingResults");
+    var sortBy = document.getElementById("swingSortBy");
+    var direction = document.getElementById("swingDirectionFilter");
+    var confidence = document.getElementById("swingConfidenceFilter");
+    var minScore = document.getElementById("swingMinScore");
+
+    var url = API_BASE + "/api/batch-scanner/results?limit=50";
+    if (sortBy && sortBy.value) url += "&sort_by=" + sortBy.value;
+    if (direction && direction.value) url += "&direction=" + direction.value;
+    if (confidence && confidence.value) url += "&confidence=" + confidence.value;
+    if (minScore && minScore.value) url += "&min_score=" + minScore.value;
+
+    try {
+        var res = await fetch(url);
+        var data = await res.json();
+
+        if (data.status === "no_data") {
+            return; // No results yet
+        }
+
+        // Show summary cards
+        var summaryEl = document.getElementById("swingSummary");
+        if (summaryEl) summaryEl.style.display = "grid";
+
+        renderSwingResultsList(data.results || []);
+    } catch (err) {
+        console.error("Failed to load swing results:", err);
+    }
+}
+
+function renderSwingResults(data) {
+    // Render high conviction first, then all results
+    var allResults = [];
+
+    // Combine: high conviction at top, then rest
+    var highConv = data.high_conviction || [];
+    var allData = data.all_results || [];
+    var seen = {};
+
+    for (var i = 0; i < highConv.length; i++) {
+        seen[highConv[i].ticker] = true;
+        allResults.push(highConv[i]);
+    }
+    for (var j = 0; j < allData.length; j++) {
+        if (!seen[allData[j].ticker]) {
+            allResults.push(allData[j]);
+        }
+    }
+
+    renderSwingResultsList(allResults);
+}
+
+function renderSwingResultsList(results) {
+    var resultsEl = document.getElementById("swingResults");
+    if (!results || results.length === 0) {
+        resultsEl.innerHTML = '<div class="scanner-empty"><p>No swing opportunities found matching your filters.</p></div>';
+        return;
+    }
+
+    var html = '';
+    for (var i = 0; i < results.length; i++) {
+        var r = results[i];
+        html += renderSwingCard(r, i);
+    }
+    resultsEl.innerHTML = html;
+}
+
+function renderSwingCard(r, index) {
+    var dirClass = r.direction === "LONG" ? "swing-long" : r.direction === "SHORT" ? "swing-short" : "swing-neutral";
+    var dirEmoji = r.direction === "LONG" ? "🟢" : r.direction === "SHORT" ? "🔴" : "⚪";
+    var dirLabel = r.direction || "NEUTRAL";
+    var confClass = r.confidence === "High" ? "swing-conf-high" : r.confidence === "Medium" ? "swing-conf-medium" : "swing-conf-low";
+    var confEmoji = r.confidence === "High" ? "🔥" : r.confidence === "Medium" ? "⚡" : "💤";
+
+    var tickerDisplay = (r.ticker || "").replace(".NS", "");
+
+    // Score bar color
+    var scoreColor = r.swing_score >= 65 ? "var(--accent-green)" : r.swing_score >= 45 ? "var(--accent-gold)" : "var(--text-muted)";
+
+    var html = '<div class="swing-card ' + dirClass + '">';
+
+    // Header row
+    html += '<div class="swing-card-header">';
+    html += '<div class="swing-card-info">';
+    html += '<span class="swing-card-name">' + escapeHtml(r.name || "") + '</span>';
+    html += '<span class="swing-card-ticker">' + escapeHtml(tickerDisplay) + '</span>';
+    html += '<span class="swing-card-price">₹' + (r.price || "N/A") + '</span>';
+    html += '</div>';
+    html += '<div class="swing-card-badges">';
+    html += '<span class="swing-dir-badge ' + dirClass + '">' + dirEmoji + ' ' + dirLabel + '</span>';
+    html += '<span class="swing-conf-badge ' + confClass + '">' + confEmoji + ' ' + r.confidence + '</span>';
+    html += '</div>';
+    html += '</div>';
+
+    // Score bar
+    html += '<div class="swing-score-row">';
+    html += '<span class="swing-score-label">Swing Score</span>';
+    html += '<div class="swing-score-bar"><div class="swing-score-fill" style="width:' + Math.min(r.swing_score, 100) + '%;background:' + scoreColor + '"></div></div>';
+    html += '<span class="swing-score-val">' + (r.swing_score || 0) + '</span>';
+    html += '</div>';
+
+    // Trade levels
+    if (r.entry || r.stop_loss || r.target) {
+        html += '<div class="swing-levels">';
+        if (r.entry) html += '<div class="swing-level"><span class="swing-level-label">Entry</span><span class="swing-level-val swing-level-entry">₹' + r.entry + '</span></div>';
+        if (r.stop_loss) html += '<div class="swing-level"><span class="swing-level-label">Stop Loss</span><span class="swing-level-val swing-level-sl">₹' + r.stop_loss + '</span></div>';
+        if (r.target) html += '<div class="swing-level"><span class="swing-level-label">Target</span><span class="swing-level-val swing-level-target">₹' + r.target + '</span></div>';
+        if (r.risk_reward) html += '<div class="swing-level"><span class="swing-level-label">R:R</span><span class="swing-level-val swing-level-rr">1:' + r.risk_reward + '</span></div>';
+        html += '</div>';
+    }
+
+    // Technical indicators row
+    html += '<div class="swing-indicators">';
+    if (r.rsi != null) {
+        var rsiClass = r.rsi < 30 ? "swing-ind-bullish" : r.rsi > 70 ? "swing-ind-bearish" : "swing-ind-neutral";
+        html += '<span class="swing-ind ' + rsiClass + '">RSI: ' + r.rsi.toFixed(0) + '</span>';
+    }
+    if (r.macd_trend) {
+        var macdClass = r.macd_trend === "Bullish" ? "swing-ind-bullish" : "swing-ind-bearish";
+        html += '<span class="swing-ind ' + macdClass + '">MACD: ' + r.macd_trend + '</span>';
+    }
+    if (r.macd_crossover) {
+        var crossClass = r.macd_crossover.includes("Bullish") ? "swing-ind-bullish" : "swing-ind-bearish";
+        html += '<span class="swing-ind ' + crossClass + '">' + r.macd_crossover + '</span>';
+    }
+    if (r.obv_trend) {
+        var obvClass = r.obv_trend === "Accumulation" ? "swing-ind-bullish" : "swing-ind-bearish";
+        html += '<span class="swing-ind ' + obvClass + '">OBV: ' + r.obv_trend + '</span>';
+    }
+    if (r.volume_ratio) {
+        var volClass = r.volume_ratio > 1.5 ? "swing-ind-bullish" : r.volume_ratio < 0.7 ? "swing-ind-bearish" : "swing-ind-neutral";
+        html += '<span class="swing-ind ' + volClass + '">Vol: ' + r.volume_ratio + 'x</span>';
+    }
+    html += '</div>';
+
+    // Returns & metrics row
+    html += '<div class="swing-metrics">';
+    if (r["1w_return"] != null) {
+        var wClass = r["1w_return"] >= 0 ? "swing-metric-green" : "swing-metric-red";
+        html += '<span class="swing-metric ' + wClass + '">1W: ' + (r["1w_return"] >= 0 ? "+" : "") + r["1w_return"] + '%</span>';
+    }
+    if (r["1m_return"] != null) {
+        var mClass = r["1m_return"] >= 0 ? "swing-metric-green" : "swing-metric-red";
+        html += '<span class="swing-metric ' + mClass + '">1M: ' + (r["1m_return"] >= 0 ? "+" : "") + r["1m_return"] + '%</span>';
+    }
+    if (r.atr_pct) html += '<span class="swing-metric">ATR: ' + r.atr_pct + '%</span>';
+    if (r.nearest_support) html += '<span class="swing-metric swing-metric-green">S: ₹' + r.nearest_support + '</span>';
+    if (r.nearest_resistance) html += '<span class="swing-metric swing-metric-red">R: ₹' + r.nearest_resistance + '</span>';
+    html += '</div>';
+
+    // Patterns
+    if (r.patterns && r.patterns.length > 0) {
+        html += '<div class="swing-patterns">';
+        for (var p = 0; p < r.patterns.length; p++) {
+            var patName = r.patterns[p];
+            if (patName === "Trend Analysis") continue;
+            var isBullPat = (r.bullish_patterns || []).indexOf(patName) >= 0;
+            var isBearPat = (r.bearish_patterns || []).indexOf(patName) >= 0;
+            var patClass = isBullPat ? "swing-pat-bullish" : isBearPat ? "swing-pat-bearish" : "swing-pat-neutral";
+            html += '<span class="swing-pat ' + patClass + '">' + escapeHtml(patName) + '</span>';
+        }
+        html += '</div>';
+    }
+
+    // Reasons (collapsible)
+    if (r.reasons && r.reasons.length > 0) {
+        html += '<div class="swing-reasons">';
+        html += '<div class="swing-reasons-toggle" onclick="this.parentElement.classList.toggle(\'expanded\')">📋 ' + r.reasons.length + ' reason(s) <span class="swing-reasons-arrow">▼</span></div>';
+        html += '<ul class="swing-reasons-list">';
+        for (var k = 0; k < r.reasons.length; k++) {
+            html += '<li>' + escapeHtml(r.reasons[k]) + '</li>';
+        }
+        html += '</ul>';
+        html += '</div>';
+    }
+
+    // Actions
+    html += '<div class="swing-card-actions">';
+    html += '<button class="scanner-analyze-btn" onclick="analyzeFromScanner(\'' + escapeHtml(r.name || "") + '\')">📊 Full Analysis →</button>';
+    html += '<button class="chart-view-btn" onclick="openPatternChart(\'' + escapeHtml(r.ticker || "") + '\', \'' + escapeHtml(r.name || "") + '\', \'developing\')" title="View Chart">📊 Chart</button>';
+    html += '</div>';
+
+    html += '</div>';
+    return html;
+}
+
+// Filter change handlers for swing tab
+(function() {
+    var filterIds = ["swingDirectionFilter", "swingConfidenceFilter", "swingSortBy", "swingMinScore"];
+    document.addEventListener("DOMContentLoaded", function() {
+        for (var i = 0; i < filterIds.length; i++) {
+            var el = document.getElementById(filterIds[i]);
+            if (el) {
+                el.addEventListener("change", function() {
+                    if (!swingScanRunning) loadSwingResults();
+                });
+            }
+        }
+    });
+})();
